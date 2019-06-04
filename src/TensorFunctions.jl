@@ -5,18 +5,16 @@ using TensorCast
 
 export @tensorfunc
 
-'''
-f(A,B) = @tensorfunc[(:a,:b),:d] (:a=1,:b=3,:c=2) (A[:a,(:b,:c)] :b=2) * B[:c,:d]
+"""
+f(A,B) = @tensorfunc[(:a,:b),:d,:e] (:c=2,:e=1) (A[:a,(:b,:c),:e] :b=2) * B[:c,:d,:e]
 <=>
 function f(A,B)
-    @cast Aprime[a,b,c] := A[a,(b,c)] b:2
-    @cast Bprime[c,d] := B[c,d]
-    @tensoropt (a=>chi,b=>chi^2,c=>chi) tmp[a,b,d] := Aprime[a,b,c] * Bprime[c,d]
-    @cast res[(a,b),d] = tmp[a,b,d]
+    @cast Aprime[a,b,c,e] := A[a,(b,c),e] b:2
+    @cast Bprime[c,d,e] := B[c,d,e]
+    @tensor tmp[-1,-2,-3] := Aprime[-1,-2,2,1] * Bprime[2,-3,1]
+    @cast res[(a,b),d] := tmp[a,b,d]
 end
-
-
-'''
+"""
 macro tensorfunc(ex::Expr)
     ex
 end

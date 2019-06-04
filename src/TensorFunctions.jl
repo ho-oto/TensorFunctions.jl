@@ -74,19 +74,8 @@ function remove_bracket_(ex::Expr,name::Symbol)
     exout
 end
 
-
 set_size(ex::Expr) = Expr(:call,Symbol(":"),ex.args[1]|>eval,ex.args[2])
 
-"""
-f(A,B) = @tensorfunc[(:a,:b),:d,:e] (A[:a,(:b,:c),:e],(:b,2)) * B[:c,:d,:e] (:e,:c)
-<=>
-function f(A,B)
-    @cast Aprime[a,b,c,e] := A[a,(b,c),e] b:2
-    @cast Bprime[c,d,e] := B[c,d,e]
-    @tensor tmp[-1,-2,-3] := Aprime[-1,-2,2,1] * Bprime[2,-3,1]
-    @cast res[(a,b),d] := tmp[a,b,d]
-end
-"""
 function _tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
     if !(ind.head == :vect); error("expected to be :vect"); end
     if !(ex.head == :call); error("expected to be :call"); end

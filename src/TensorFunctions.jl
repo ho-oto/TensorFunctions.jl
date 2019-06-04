@@ -6,7 +6,7 @@ using TensorCast
 export @tensorfunc
 
 """
-f(A,B) = @tensorfunc[(:a,:b),:d,:e] (A[:a,(:b,:c),:e] :b 2) * B[:c,:d,:e] (:c=2,:e=1)
+f(A,B) = @tensorfunc[(:a,:b),:d,:e] (A[:a,(:b,:c),:e],(:b,2)) * B[:c,:d,:e] (:c=2,:e=1)
 <=>
 function f(A,B)
     @cast Aprime[a,b,c,e] := A[a,(b,c),e] b:2
@@ -16,12 +16,18 @@ function f(A,B)
 end
 """
 macro tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
-    ntensors = ex.args |> length
+    if !(ex.head == :call); error("expected to be :call"); end
+    if !(ex.args[1] == :*); error("only * is supported"); end
     outex = Expr(:block)
-    for i in 1:ntensors
-        tmpex = 0
-        push!(outex.args,tmpex)
-    end
+    exx = copy(ex)
+    for i in 2:length(ex.args)
+        if ex.args[i].head == :ref
+            exx.args[i] = quotenode_to_symbol(ex.args[i])
+        elseif ex.args[i].head == :tuple
+
+        else
+            error("???")
+        end
 end
 
 function quotenode_to_symbol(ex::Expr)
@@ -40,6 +46,10 @@ function quotenode_to_symbol(ex::Expr)
         end
     end
     exout
+end
+
+function remove_bracket
+
 end
 
 end # module

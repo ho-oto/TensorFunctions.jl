@@ -1,7 +1,6 @@
 module TensorFunctions
 
 using TensorOperations
-using LinearMaps
 using TensorCast
 
 export @tensorfunc

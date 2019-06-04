@@ -24,7 +24,11 @@ macro tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
         if ex.args[i].head == :ref
             exx.args[i] = quotenode_to_symbol(ex.args[i])
         elseif ex.args[i].head == :tuple
-
+            rhs = quotenode_to_symbol(ex.args[i].args[1])
+            newsym = gensym(rhs.args[1])
+            lhs = remove_bracket(rhs,newsym)
+            tmpargs = [set_size(j) for j in ex.args[i].args[2:end]]
+            push!(outex.args,TensorCast._macro(Expr(:(:=),lhs,rhs),tmpargs...))
         else
             error("???")
         end
@@ -66,5 +70,7 @@ function remove_bracket(ex::Expr,name::Symbol)
 end
 
 remove_bracket(ex::Expr) = remove_bracket(ex,ex.args[1])
+
+set_size(ex::Expr) = Expr(:call,Symbol(":"),ex.args[1]|>eval,ex.args[2])
 
 end # module

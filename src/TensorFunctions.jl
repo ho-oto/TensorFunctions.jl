@@ -48,9 +48,9 @@ function quotenode_to_symbol(ex::Expr)
     exout
 end
 
-function remove_bracket(ex::Expr)
+function remove_bracket(ex::Expr,name::Symbol)
     exout = Expr(:ref)
-    push!(exout.args,ex.args[1])
+    push!(exout.args,name)
     for i in ex.args[2:end]
         if typeof(i) == Symbol
             push!(exout.args,i)
@@ -64,5 +64,7 @@ function remove_bracket(ex::Expr)
     end
     exout
 end
+
+remove_bracket(ex::Expr) = remove_bracket(ex,ex.args[1])
 
 end # module

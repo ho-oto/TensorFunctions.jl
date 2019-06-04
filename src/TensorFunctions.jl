@@ -28,7 +28,16 @@ function quotenode_to_symbol(ex::Expr)
     if !(ex.head == :ref); error("ex should be :(Foo[:a,(:b,:c)])"); end
     exout = Expr(:ref,ex.args[1])
     for i in ex.args[2:end]
-        push!(exout.args,i|>eval)
+        if typeof(i) == QuoteNode
+            push!(exout.args,i|>eval)
+        elseif typeof(i) == Expr
+            if !(i.head == :tuple); error("combined index should be expressed by ()"); end
+            extmp = Expr(:tuple)
+            for j in i.args
+                push!(extmp.args,j|>eval)
+            end
+            push!(exout.args,extmp)
+        end
     end
     exout
 end

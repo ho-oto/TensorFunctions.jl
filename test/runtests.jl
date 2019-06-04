@@ -13,4 +13,10 @@ using TensorCast
     g(A,B) = @tensorfunc [(:a,:b),:d,:e] (A[:a,(:b,:c),:e],(:b,2)) * B[:c,:d,:e] (:c=2,:e=1)
     A = randn(4,25,6); B = randn(5,7,6)
     @assert f(A,B) == g(A,B)
+
+    @assert TensorFunctions.quotenode_to_symbol(:(A[:a,:b,:c])) == :(A[a,b,c])
+    @assert TensorFunctions.quotenode_to_symbol(:(A[(:a,:b),:c,(:d,:e)])) == :(A[(a,b),c,(d,e)])
+
+    @assert TensorFunctions.remove_bracket(:(A[(a,b),c,(d,e,f)])) == :(A[a,b,c,d,e,f])
+    @assert TensorFunctions.remove_bracket(:(A[(a,b),c,(d,e,f)]),:B) == :(B[a,b,c,d,e,f])
 end

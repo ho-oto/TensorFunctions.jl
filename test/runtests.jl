@@ -20,5 +20,7 @@ using TensorCast
     @assert TensorFunctions.remove_bracket(:(A[(a,b),c,(d,e,f)])) == :(A[a,b,c,d,e,f])
     @assert TensorFunctions.remove_bracket(:(A[(a,b),c,(d,e,f)]),:B) == :(B[a,b,c,d,e,f])
 
+    @assert TensorFunctions.remove_bracket_(:([(:a,:b),:c,(:d,:e,:f)]),:B) == :(B[a,b,c,d,e,f])
+
     @assert TensorFunctions.set_size(:((:a,3))) == :(a:3)
 end

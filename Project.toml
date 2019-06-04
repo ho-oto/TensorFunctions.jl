@@ -1,0 +1,13 @@
+name = "TensorFunctions"
+uuid = "d3a97a5e-86a1-11e9-3c95-3f5e5d736948"
+authors = ["ho-oto"]
+version = "0.1.0"
+
+[compat]
+julia = "1.1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

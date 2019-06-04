@@ -48,8 +48,21 @@ function quotenode_to_symbol(ex::Expr)
     exout
 end
 
-function remove_bracket
-
+function remove_bracket(ex::Expr)
+    exout = Expr(:ref)
+    push!(exout.args,ex.args[1])
+    for i in ex.args[2:end]
+        if typeof(i) == Symbol
+            push!(exout.args,i)
+        elseif typeof(i) == Expr && i.head == :tuple
+            for j in i.args
+                push!(exout.args,j)
+            end
+        else
+            error("?????")
+        end
+    end
+    exout
 end
 
 end # module

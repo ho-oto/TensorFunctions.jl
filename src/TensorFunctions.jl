@@ -6,7 +6,7 @@ using TensorCast
 export @tensorfunc
 
 """
-f(A,B) = @tensorfunc[(:a,:b),:d,:e] (A[:a,(:b,:c),:e],(:b,2)) * B[:c,:d,:e] (:c=2,:e=1)
+f(A,B) = @tensorfunc[(:a,:b),:d,:e] (A[:a,(:b,:c),:e],(:b,2)) * B[:c,:d,:e] (:e,:c)
 <=>
 function f(A,B)
     @cast Aprime[a,b,c,e] := A[a,(b,c),e] b:2

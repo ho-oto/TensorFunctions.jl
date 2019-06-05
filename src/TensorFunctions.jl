@@ -77,7 +77,13 @@ function give_name(ex::Expr,name::Symbol)
     exout
 end
 
-set_size(ex::Expr) = Expr(:call,Symbol(":"),ex.args[1]|>eval,ex.args[2])
+function set_size(ex::Expr)
+    if ex.head == :tuple && (ex.args[1]|>eval|>typeof) == Symbol && typeof(ex.args[2]) == Int && length(ex.args) == 2
+        Expr(:call,Symbol(":"),ex.args[1]|>eval,ex.args[2])
+    else
+        error("ex should be :((:hoge,huga::Int))")
+    end
+end
 
 function _tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
     if !(ind.head == :vect); error("expected to be :vect"); end

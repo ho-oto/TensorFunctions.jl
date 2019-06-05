@@ -18,7 +18,7 @@ function remove_quote(ex::Expr)
     elseif ex.head == :vect || ex.head == :tuple
         exout = Expr(ex.head)
         for elem in ex.args
-            if typeof(elem) == QuoteNode
+            if typeof(elem) == QuoteNode && typeof(elem|>eval) == Symbol
                 push!(exout.args,elem|>eval)
             elseif typeof(elem) == Expr && elem.head == :tuple
                 push!(exout.args,remove_quote(elem))
@@ -30,6 +30,38 @@ function remove_quote(ex::Expr)
         error("ex.head should be [:ref,:vect,:tuple]")
     end
     exout
+end
+
+function remove_bracket(ex::Expr)
+    havebracket = false
+    if ex.head == :ref
+        exout = Expr(:ref,ex.args[1])
+        for elem in ex.args[2:end]
+            if (typeof(elem) == QuoteNode && typeof(elem|>eval) == Symbol) || typeof(elem) == Symbol
+                push!(exout.args,elem)
+            elseif typeof(elem) == Expr && elem.head == :tuple
+                push!(exout.args,elem.args...)
+                havebracket = true
+            else
+                error("ex.args should be Symbol or QuotedSymbol tuple of [Symbols,QuotedSymbols]")
+            end
+        end
+    elseif ex.head == :vect || ex.head == :tuple
+        exout = Expr(ex.head)
+        for elem in ex.args
+            if (typeof(elem) == QuoteNode && typeof(elem|>eval) == Symbol) || typeof(elem) == Symbol
+                push!(exout.args,elem)
+            elseif typeof(elem) == Expr && elem.head == :tuple
+                push!(exout.args,elem.args...)
+                havebracket = true
+            else
+                error("ex.args should be Symbol or QuotedSymbol tuple of [Symbols,QuotedSymbols]")
+            end
+        end
+    else
+        error("ex.head should be [:ref,:vect,:tuple]")
+    end
+    exout,havebracket
 end
 
 function quotenode_to_symbol(ex::Expr)

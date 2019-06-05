@@ -85,6 +85,23 @@ function set_size(ex::Expr)
     end
 end
 
+function symbol_to_int(ex::Expr,inddict::Dict{Symbol,Int})
+    #TODO: enable to parse nested one like A[(:a,:b),:c]
+    exout = copy(ex)
+    if ex.head == :ref
+        for i in 2:length(ex.args)
+            exout.args[i] = inddict[ex.args[i]|>eval]
+        end
+    elseif ex.head == :vect || ex.head == :tuple
+        for i in 1:length(ex.args)
+            exout.args[i] = inddict[ex.args[i]|>eval]
+        end
+    else
+        error("ex.head should be [:ref,:vect,:tuple]")
+    end
+    exout
+end
+
 function _tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
     if !(ind.head == :vect); error("expected to be :vect"); end
     if !(ex.head == :call); error("expected to be :call"); end

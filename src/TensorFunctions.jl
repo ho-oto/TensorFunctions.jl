@@ -64,6 +64,19 @@ function remove_bracket(ex::Expr)
     exout,havebracket
 end
 
+function give_name(ex::Expr,name::Symbol)
+    if ex.head == :ref
+        exout = copy(ex)
+        exout.args[1] = name
+    elseif ex.head == :vect || ex.head == :tuple
+        exout = Expr(:ref,name)
+        push!(exout.args,ex.args...)
+    else
+        error("ex.head should be [:ref,:vect,:tuple]")
+    end
+    exout
+end
+
 function quotenode_to_symbol(ex::Expr)
     if !(ex.head == :ref); error("ex should be :(Foo[:a,(:b,:c)])"); end
     exout = Expr(:ref,ex.args[1])

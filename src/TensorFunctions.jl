@@ -102,73 +102,16 @@ function symbol_to_int(ex::Expr,inddict::Dict{Symbol,Int})
     exout
 end
 
-function _tensorfunc(ind::Expr,ex::Expr,ncon::Expr)
-    if !(ind.head == :vect); error("expected to be :vect"); end
-    if !(ex.head == :call); error("expected to be :call"); end
-    if !(ex.args[1] == :*); error("only * is supported"); end
-    if !(ncon.head == :tuple); error("expected to be :tuple"); end
+function _tensorfunc()
 
-    outex = Expr(:block)
-    exx = copy(ex)
-
-    ncondict = Dict((ncon.args[i]|>eval,i) for i in 1:length(ncon.args))
-    inddict = Dict((ind.args[i]|>eval,-i) for i in 1:length(ind.args))
-    merge!(ncondict,inddict)
-
-    for i in 2:length(ex.args)
-        if ex.args[i].head == :ref
-            exx.args[i] = quotenode_to_symbol(ex.args[i])
-            for k in 2:length(exx.args[i].args)
-                exx.args[i].args[k] = ncondict[exx.args[i].args[k]]
-            end
-        elseif ex.args[i].head == :tuple
-            newsym = gensym()
-            rhs = quotenode_to_symbol(ex.args[i].args[1])
-            lhs = remove_bracket(rhs,newsym)
-            tmpargs = [set_size(j) for j in ex.args[i].args[2:end]]
-            push!(outex.args,TensorCast._macro(Expr(:(:=),lhs,rhs),tmpargs...))
-            exx.args[i] = lhs
-            for k in 2:length(exx.args[i].args)
-                exx.args[i].args[k] = ncondict[exx.args[i].args[k]]
-            end
-        else
-            error("???")
-        end
-    end
-    newsym = gensym()
-    push!(outex.args,TensorOperations.tensorify(Expr(:(:=),Expr(:ref,newsym,Symbol(":")),exx)))
-    ressym = gensym()
-    push!(outex.args,TensorCast._macro(Expr(:(:=),quotenode_to_symbol_(ind,ressym),remove_bracket_(ind,newsym))))
-    outex
 end
 
-function _tensorfunc(ind::Expr,ex::Expr)
-    if !(ind.head == :vect); error("expected to be :vect"); end
-    if !(ex.head == :call); error("expected to be :call"); end
-    if !(ex.args[1] == :*); error("only * is supported"); end
-
-    outex = Expr(:block)
-    exx = copy(ex)
-
-    for i in 2:length(ex.args)
-        if ex.args[i].head == :ref
-            exx.args[i] = quotenode_to_symbol(ex.args[i])
-        elseif ex.args[i].head == :tuple
-            newsym = gensym()
-            rhs = quotenode_to_symbol(ex.args[i].args[1])
-            lhs = remove_bracket(rhs,newsym)
-            tmpargs = [set_size(j) for j in ex.args[i].args[2:end]]
-            push!(outex.args,TensorCast._macro(Expr(:(:=),lhs,rhs),tmpargs...))
-            exx.args[i] = lhs
-        else
-            error("???")
-        end
-    end
-    newsym = gensym()
-    push!(outex.args,TensorOperations.tensorify(Expr(:(:=),remove_bracket_(ind,newsym),exx)))
-    ressym = gensym()
-    push!(outex.args,TensorCast._macro(Expr(:(:=),quotenode_to_symbol_(ind,ressym),remove_bracket_(ind,newsym))))
-    outex
+"""
+    f(A,B,C) = @tensorfunc [(:a,:b),(:c,:d)] <= A[:a,:x] * (B[(:x,:y)],(:x,5)) * (C[(:y,:b,:c),:d],(:y,6),(:b,7)) options
+    f(A,B,C) = @tensorfunc A[:a,:x] * (B[(:x,:y)],(:x,5)) * (C[(:y,:b,:c),:d],(:y,6),(:b,7)) => [(:a,:b),(:c,:d)] options
+"""
+macro tensorfunc(ex::Expr)
+    _tensorfunc(ex)
 end
 
 #export @tensorfunc

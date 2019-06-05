@@ -100,10 +100,26 @@ function symbol_to_int(ex::Expr,inddict::Dict{Symbol,Int})
         error("ex.head should be [:ref,:vect,:tuple]")
     end
     exout
+    
 end
 
-function _tensorfunc()
-
+function _tensorfunc(ex::Expr)
+    #TODO: enable to parse nested one like (A[:a,:b] * B[:b,:c]) * C[:c,:d]
+    if ex.head == :call && ex.args[1] == :(=>) && length(ex.args) == 3
+        inp,outp = ex.args[2:3]
+    elseif ex.head == :call && ex.args[1] == :(<=) && length(ex.args) == 3
+        outp,inp = ex.args[2:3]
+    else
+        error("parse fails")
+    end
+    if outp.head != :vect || inp.head != :call || inp.args[1] != :*
+        error("parse fails")
+    end
+    exout = Expr(:block)
+    for elem in inp.args[2:end]
+        if elem.head == :tuple && elem.args[1].head == :ref
+    end
+    ###
 end
 
 """

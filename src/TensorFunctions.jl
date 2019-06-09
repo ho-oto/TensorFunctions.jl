@@ -49,7 +49,7 @@ function isindexproduct(ex)
     end
 end
 
-isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr)
+isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || isindexproduct(ex)
 
 function istensor(ex,lorr)
     if typeof(ex) != Expr

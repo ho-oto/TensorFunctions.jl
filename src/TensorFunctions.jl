@@ -81,7 +81,9 @@ end
 function istensorproduct(ex)
     if typeof(ex) != Expr
         false
-    elseif ex.head == :ref && ex.args[1] == :*
+    elseif ex.head == :call &&
+        ex.args[1] == :* &&
+        all(ex.args[2:end] .|> x -> istensor(x,:rhs))
         true
     else
         false

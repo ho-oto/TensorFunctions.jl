@@ -5,14 +5,6 @@ using TensorOperations: contract!,trace!
 
 export @tensorfunc,@tensormap
 
-function issymbol(ex)
-    if typeof(ex) != QuoteNode
-        false
-    else
-        true
-    end
-end
-
 issymbol(ex) = typeof(ex) == QuoteNode ? true : false
 tosymbol(ex) = issymbol(ex) ? ex.value : nothing
 

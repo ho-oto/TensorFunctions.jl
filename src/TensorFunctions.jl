@@ -90,7 +90,7 @@ function istensorproduct(ex)
     end
 end
 
-function lhsandrhs(ex::Expr)
+function lhsrhs(ex::Expr)
     if ex.head in [:(=),:(:=),:(<=),:(+=),:(-=)]
         if istensor(ex.args[1],:lhs)
             return ex.args[1],ex.args[2]

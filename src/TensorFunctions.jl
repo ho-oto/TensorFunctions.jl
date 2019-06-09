@@ -19,7 +19,10 @@ tosymbol(ex) = issymbol(ex) ? ex.value : nothing
 function isinpairedindex(ex,lorr)
     if lorr == :rhs
         if typeof(ex) == Expr
-            ex.head == :call && ex.args[1] == :| && issymbol(ex.args[2]) && length(ex.args) == 3
+            ex.head == :call &&
+                ex.args[1] == :| &&
+                issymbol(ex.args[2]) &&
+                length(ex.args) == 3
         else
             issymbol(ex)
         end

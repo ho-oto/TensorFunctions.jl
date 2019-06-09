@@ -12,9 +12,9 @@ function isinpairedindex(ex,lorr)
     if lorr == :rhs
         if typeof(ex) == Expr
             ex.head == :call &&
-                ex.args[1] == :| &&
-                issymbol(ex.args[2]) &&
-                length(ex.args) == 3
+            ex.args[1] == :| &&
+            issymbol(ex.args[2]) &&
+            length(ex.args) == 3
         else
             issymbol(ex)
         end
@@ -54,15 +54,25 @@ isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || isindexproduct(ex)
 function istensor(ex,lorr)
     if typeof(ex) != Expr
         false
-    elseif ex.head != :ref
+    elseif ex.head == :ref
+        all(typeof.(ex.args[2:end]) .|> x -> isindex(x,lorr))
+    elseif ex.head == :vect
+        if lorr != :lhs
+            false
+        else
+            all(typeof.(ex.args) .|> x -> isindex(x,lorr))
+        end
+    else
         false
-    elseif all(typeof.(ex.args[2:end]) .== QuoteNode)
-        true
     end
 end
 function totensor(ex)
     if istensor(ex)
-        ex.args[1],tosymbol.(ex.args[2:end])
+        if ex.head == :vect
+            nothing,ex.args
+        else
+            ex.args[1],ex.args[2:end]
+        end
     else
         nothing,nothing
     end

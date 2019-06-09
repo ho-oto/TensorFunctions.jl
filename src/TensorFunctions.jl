@@ -35,6 +35,20 @@ function ispairedindex(ex,lorr)
     end
 end
 
+function isindexproduct(ex)
+    if typeof(ex) != Expr
+        false
+    elseif ex.head == :call &&
+        ex.args[1] == :* &&
+        issymbol(ex.args[2]) &&
+        typeof(ex.args[3]) == Int &&
+        length(ex.args) == 3
+        true
+    else
+        false
+    end
+end
+
 isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr)
 
 function istensor(ex,lorr)
@@ -66,13 +80,13 @@ end
 
 function lhsandrhs(ex::Expr)
     if ex.head in [:(=),:(:=),:(<=),:(+=),:(-=)]
-        if istensor(ex.args[1])
+        if istensor(ex.args[1],:lhs)
             return ex.args[1],ex.args[2]
         else
             error("parse error")
         end
     elseif ex.head == :(=>)
-        if istensor(ex.args[2])
+        if istensor(ex.args[2],:lhs)
             return ex.args[2],ex.args[1]
         else
             error("parse error")

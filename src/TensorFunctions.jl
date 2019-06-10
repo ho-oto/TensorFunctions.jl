@@ -1,11 +1,10 @@
 module TensorFunctions
 
-using LinearAlgebra
+using LinearAlgebra,TensorOperations
 
 export @tensorfunc,@tensormap
 
-contract!(C,A,B,oindA, cindA, oindB, cindB, indleft, indright) = error("mizissou")
-trace!(C,A,indleft, indright, cind1, cind2) = error("mizissou")
+
 
 issymbol(ex) = typeof(ex) == QuoteNode ? true : false
 tosymbol(ex) = issymbol(ex) ? ex.value : nothing
@@ -118,6 +117,14 @@ function tensorproductmain(ex)
     # convert to NCON
     # 2. A*B*C*D*E -> (( A * B ) * ( C * ( D * E )))
     # 3. reshape the result
+end
+
+macro tensorfunc(ex::Expr)
+    ex
+end
+
+macro tensormap(ex::Expr)
+    ex
 end
 
 end # module

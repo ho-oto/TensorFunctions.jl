@@ -4,8 +4,6 @@ using LinearAlgebra,TensorOperations
 
 export @tensorfunc,@tensormap
 
-
-
 issymbol(ex) = typeof(ex) == QuoteNode ? true : false
 tosymbol(ex) = issymbol(ex) ? ex.value : nothing
 
@@ -67,6 +65,24 @@ function istensor(ex,lorr)
         false
     end
 end
+
+function tosimpletensor(ex,arg::Dict{Symbol,Int})
+    if !istensor(ex,:rhs)
+        error("not tensor")
+    else
+        tensorname = ex.args[1]
+        indexlist = ex.args[2:end]
+        newindexlist = QuoteNode[]
+        for i in indexlist
+            if issymbol(i)
+                push!(newindexlist,i)
+            else
+
+            end
+        end
+    end
+end
+
 function totensor(ex)
     if istensor(ex)
         if ex.head == :vect
@@ -112,19 +128,37 @@ function lhsrhs(ex::Expr)
     end
 end
 
-function tensorproductmain(ex)
+function tensorproductmain(ex,contractorder)
     # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
-    # convert to NCON
-    # 2. A*B*C*D*E -> (( A * B ) * ( C * ( D * E )))
-    # 3. reshape the result
+    # 2. convert to NCON
+    # 3. A*B*C*D*E -> (( A * B ) * ( C * ( D * E )))
+    #=
+    (( A * B ) * ( C * ( D * E )))
+    ->
+    tmp1 = (D*E)
+    (( A * B ) * ( C * tmp1))
+    ->
+    tmp1 = (D*E)
+    tmp2 = (C*tmp1)
+    tmp3 = (A*B)
+    (tmp3 * tmp2)
+    =#
+    # 4. reshape the result
+
+    #= step 1 =#
+    head,lhs,rhs = lhsrhs(ex)
+end
+
+function tensormapmain(ex::Expr)
+
 end
 
 macro tensorfunc(ex::Expr)
-    ex
+    tensorproductmain(ex)
 end
 
 macro tensormap(ex::Expr)
-    ex
+    tensormapmain(ex)
 end
 
 end # module

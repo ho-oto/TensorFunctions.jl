@@ -1,9 +1,11 @@
 module TensorFunctions
 
 using LinearAlgebra
-using TensorOperations: contract!,trace!
 
 export @tensorfunc,@tensormap
+
+contract!(C,A,B,oindA, cindA, oindB, cindB, indleft, indright) = error("mizissou")
+trace!(C,A,indleft, indright, cind1, cind2) = error("mizissou")
 
 issymbol(ex) = typeof(ex) == QuoteNode ? true : false
 tosymbol(ex) = issymbol(ex) ? ex.value : nothing
@@ -91,21 +93,31 @@ function istensorproduct(ex)
 end
 
 function lhsrhs(ex::Expr)
+    if length(ex.args) != 2
+        error("parse error")
+    end
     if ex.head in [:(=),:(:=),:(<=),:(+=),:(-=)]
-        if istensor(ex.args[1],:lhs)
-            return ex.args[1],ex.args[2]
+        if istensor(ex.args[1],:lhs) && istensorproduct(ex.args[2])
+            return ex.head,ex.args[1],ex.args[2]
         else
             error("parse error")
         end
     elseif ex.head == :(=>)
-        if istensor(ex.args[2],:lhs)
-            return ex.args[2],ex.args[1]
+        if istensor(ex.args[2],:lhs) && istensorproduct(ex.args[1])
+            return ex.head,ex.args[2],ex.args[1]
         else
             error("parse error")
         end
     else
         error("parse error")
     end
+end
+
+function tensorproductmain(ex)
+    # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
+    # convert to NCON
+    # 2. A*B*C*D*E -> (( A * B ) * ( C * ( D * E )))
+    # 3. reshape the result
 end
 
 end # module

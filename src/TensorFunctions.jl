@@ -180,25 +180,24 @@ end
 haveduplicatedindex(inds) = (inds|>Set|>length) != (inds|>length)
 
 function makepairwised(ex::Expr,contractorder)
-    #N個の積か確かめる
-    #2個の積で->終了
-    #indexリストの中で一番小さなやつを共有している2つをペアにしてindexを露出させる
-    #ペアにしたやつにmakepairwisedを作用させたヤツと、残りにmakepairwisedを作用させたヤツのペアを返す
     if ex.head != :call || ex.args[1] != :*
         error("parse error")
     elseif length(ex.args) == 3 #2コの積
-        # hoge[] * huga[] or (hoge[] * huga[])[] * piyo[] or (hoge[] * huga[]) * piyo[]
-        if ex.args[2].head == ex.args[3].head == :ref &&
-            !(istensorproduct(ex.args[2].args[1])) &&
-            !(istensorproduct(ex.args[3].args[1])) #nameがもはやtensorproductではない
-            ex #そのまま返す
-        elseif istensorproduct(ex.args[2]) # 最初がtensorproductでindexが露出していない
-            exx = copy(ex)
-            exx.args[2] = Expr(:ref,ex.args[2],commonindex(ex.args[2]))
-            makepairwised(exx,contractorder)
-        else
-
+        ex
+    else
+        # 露出しているindexの中で一若いのをペアにして全体を自分に食わせる
+        exx = copy(ex)
+        indslis = [i.args[2:end] for i in ex.args[2:end]]
+        tmp = Int[]
+        for j in contractorder
+            for k in 1:length(indslis)
+                if j in indslis[k]; push!(tmp,k); end
+            end
+            if length(tmp) == 2; break; end
         end
+        filter!(x->!(x in tmp),exx.args[2:end])
+        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),commonindex()...))
+        makepairwised(exx)
     end
 end
 

@@ -20,22 +20,12 @@ function isinpairedindex(ex,lorr) # :a|hoge,:a -> true
     end
 end
 
-function ispairedindex(ex,lorr) # (:a,:b|hoge,:c),(:a,:b) -> true
-    if typeof(ex) != Expr
-        false
-    else
-        (ex.head == :tuple) && all(ex.args .|> x -> isinpairedindex(x,lorr))
-    end
-end
+ispairedindex(ex,lorr) = false
+ispairedindex(ex::Expr,lorr) = (ex.head == :tuple) && all(ex.args .|> x -> isinpairedindex(x,lorr))
 
-function isindexproduct(ex) # :a*4,:b*5 -> true
-    if typeof(ex) != Expr
-        false
-    else
-        ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-        ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
-    end
-end
+isindexproduct(ex) = false
+isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
+    ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
 
 isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || (lorr == :rhs && isindexproduct(ex))
 

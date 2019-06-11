@@ -163,8 +163,14 @@ function parsetensorproduct(ex,contractor=tensorcontract)
     end
 end
 
-function commonindex(indslis)
-    res = [indslis[1]...]
+function nonduplicateindex(indslis)
+    res_ = [indslis[1]...]
+    res = eltype(res_)[]
+    for i in res_
+        if !(i in res)
+            push!(res,i)
+        end
+    end
     for inds in indslis[2:end]
         for ind in inds
             if ind in res
@@ -196,7 +202,7 @@ function makepairwised(ex::Expr,contractorder)
             if length(tmp) == 2; break; end
         end
         filter!(x->!(x in tmp),exx.args[2:end])
-        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),commonindex()...))
+        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),nonduplicateindex()...))
         makepairwised(exx)
     end
 end
@@ -207,6 +213,8 @@ function tensorproductmain(ex,contractorder=nothing)
     # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
     # 4. reshape the result
     head,lhs,rhs = toheadlhsrhs(ex)
+    rhs = tosimpletensor(rhs)
+    rhs = taketensor(rhs)
     rhs = makepairwised(rhs,contractorder)
     rhs = Expr(:ref,rhs)
     append!(rhs.args,tonameindex(lhs,:lhs)[2])

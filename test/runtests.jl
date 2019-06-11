@@ -34,14 +34,16 @@ using Test
     @test TensorFunctions.istensor(:( foo(bar)[(:a|hoge(2),:b),:c] ),:rhs) == true
     @test TensorFunctions.istensor(:( foo(bar|>hugo)[(:a|4,:b|hoge(3)),:c*6] ),:rhs) == true
     @test TensorFunctions.istensor(:( [:a,:b,:c] ),:rhs) == false
+    @test TensorFunctions.istensor(:( [:a,(:b,:c)] ),:rhs) == false
     @test TensorFunctions.istensor(:( [(:a|4,:b|hoge(3)),:c*6] ),:rhs) == false
 
     @test TensorFunctions.istensor(:( foo[:a,:b,:c] ),:lhs) == true
     @test TensorFunctions.istensor(:( foo(bar)[:a,:b,:c] ),:lhs) == true
     @test TensorFunctions.istensor(:( foo(bar)[(:a,:b),:c] ),:lhs) == true
-    @test TensorFunctions.istensor(:( foo(bar)[(:a|hoge(2),:b),:c] ),:lhs) == true
-    @test TensorFunctions.istensor(:( foo(bar|>hugo)[(:a|4,:b|hoge(3)),:c*6] ),:lhs) == true
-    @test TensorFunctions.istensor(:( [:a,:b,:c] ),:lhs) == false
+    @test TensorFunctions.istensor(:( foo(bar)[(:a|hoge(2),:b),:c] ),:lhs) == false
+    @test TensorFunctions.istensor(:( foo(bar|>hugo)[(:a|4,:b|hoge(3)),:c*6] ),:lhs) == false
+    @test TensorFunctions.istensor(:( [:a,:b,:c] ),:lhs) == true
+    @test TensorFunctions.istensor(:( [:a,(:b,:c)] ),:lhs) == true
     @test TensorFunctions.istensor(:( [(:a|4,:b|hoge(3)),:c*6] ),:lhs) == false
 
 end

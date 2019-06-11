@@ -165,25 +165,14 @@ function parsetensorproduct(ex,contractor=tensorcontract)
     end
 end
 
-function tensorproductmain(ex,contractorder)
+function tensorproductmain(ex,contractorder::Union{Dict{Int,Symbol},NTuple{N,Int}} where N = nothing)
     # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
-    # 2. convert to NCON
     # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
-    #=
-    (( A * B ) * ( C * ( D * E )))
-    ->
-    tmp1 = (D*E)
-    (( A * B ) * ( C * tmp1))
-    ->
-    tmp1 = (D*E)
-    tmp2 = (C*tmp1)
-    tmp3 = (A*B)
-    (tmp3 * tmp2)
-    =#
     # 4. reshape the result
 
     #= step 1 =#
     head,lhs,rhs = lhsrhs(ex)
+    rhs = pairwisedrhs(rhs,contractorder)
     tmp = Expr(:ref,rhs)
     append!(tmp.args,totensor(lhs,:lhs)[2])
     tmp = parsetensorproduct(tmp)

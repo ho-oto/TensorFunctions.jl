@@ -37,24 +37,31 @@ issimpletensor(ex) = false
 issimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> issymbol)
 
 istensorproduct(ex) = false
-istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
-
-
+istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
+    all(ex.args[2:end] .|> x -> istensor(x,:rhs))
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
-    # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
-    # TODO:
-    if !istensor(ex,:rhs)
-        error("not tensor")
-    else
-        tensorname = ex.args[1]
-        indexlist = ex.args[2:end]
-        newindexlist = QuoteNode[]
-        for i in indexlist
-            if issymbol(i)
-                push!(newindexlist,i)
-            else
+    if istensorproduct(ex)
+        exx = copy(ex)
+        for i in 2:length(ex.args)
+            exx.args[i] = tosimpletensor(ex.args[i])
+        end
+        exx
+    elseif istensor(ex)
+        # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
+        # TODO:
+        if !istensor(ex,:rhs)
+            error("not tensor")
+        else
+            tensorname = ex.args[1]
+            indexlist = ex.args[2:end]
+            newindexlist = QuoteNode[]
+            for i in indexlist
+                if issymbol(i)
+                    push!(newindexlist,i)
+                else
 
+                end
             end
         end
     end

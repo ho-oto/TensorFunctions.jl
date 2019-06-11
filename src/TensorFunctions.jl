@@ -128,7 +128,7 @@ function lhsrhs(ex::Expr)
     end
 end
 
-function parsetensorproduct(ex)
+function parsetensorproduct(ex,contractor=tensorcontract)
     # (foo[a,b] * bar[b,c])[a,c] ->
     # quote
     # Foo = parsetensorproduct(foo[a,b])
@@ -145,7 +145,11 @@ function parsetensorproduct(ex)
         return quote
             $lhs = $lhs2
             $rhs = $rhs2
-            tensorcontract($lhs,$(ex.args[1].args[2].args[2:end]|>Tuple),$rhs,$(ex.args[1].args[3].args[2:end]|>Tuple),$(ex.args[2:end]|>Tuple))
+            $contractor($lhs,
+                $(ex.args[1].args[2].args[2:end]|>Tuple),
+                $rhs,
+                $(ex.args[1].args[3].args[2:end]|>Tuple),
+                $(ex.args[2:end]|>Tuple))
         end
     else
         :($(ex.args[1]))

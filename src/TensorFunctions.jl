@@ -54,12 +54,12 @@ function istensor(ex,lorr)
     if typeof(ex) != Expr
         false
     elseif ex.head == :ref
-        all(typeof.(ex.args[2:end]) .|> x -> isindex(x,lorr))
+        all(ex.args[2:end] .|> x -> isindex(x,lorr))
     elseif ex.head == :vect
         if lorr != :lhs
             false
         else
-            all(typeof.(ex.args) .|> x -> isindex(x,lorr))
+            all(ex.args .|> x -> isindex(x,lorr))
         end
     else
         false
@@ -128,10 +128,24 @@ function lhsrhs(ex::Expr)
     end
 end
 
+function parsetensorproduct(ex)
+    # (foo[a,b] * bar[b,c])[a,c] ->
+    # quote
+    # Foo = parsetensorproduct(foo[a,b])
+    # Bar = parsetensorproduct(bar[b,c])
+    # tensorcontract(Foo,Index1,Bar,Index2,Index3)
+    # end
+    if !istensor(ex)
+        error("ex should be tensor")
+    else
+
+    end
+end
+
 function tensorproductmain(ex,contractorder)
     # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
     # 2. convert to NCON
-    # 3. A*B*C*D*E -> (( A * B ) * ( C * ( D * E )))
+    # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
     #=
     (( A * B ) * ( C * ( D * E )))
     ->
@@ -147,6 +161,10 @@ function tensorproductmain(ex,contractorder)
 
     #= step 1 =#
     head,lhs,rhs = lhsrhs(ex)
+
+    return quote
+        reslhs = resrhs
+    end
 end
 
 function tensormapmain(ex::Expr)

@@ -4,7 +4,7 @@ using LinearAlgebra,TensorOperations
 
 export @tensorfunc#,@tensormap
 
-issymbol(ex) = typeof(ex) == QuoteNode ? true : false
+issymbol(ex) = typeof(ex) == QuoteNode
 
 function isinpairedindex(ex,lorr) # :a|hoge,:a -> true
     if lorr == :rhs
@@ -32,6 +32,33 @@ isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || (lorr == :rhs && is
 istensor(ex,lorr) = false
 istensor(ex::Expr,lorr) = (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,lorr))) ||
     (ex.head == :vect && all(ex.args .|> x -> isindex(x,lorr)) && (lorr == :lhs))
+
+issimpletensor(ex) = false
+issimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> issymbol)
+
+function istensorproduct(ex) # A[:a,:b] * (B[:b,:c] * C[(:c,:d)]) -> true
+    if typeof(ex) != Expr
+        false
+    elseif ex.head == :call &&
+        ex.args[1] == :* &&
+        all(ex.args[2:end] .|> x -> istensorproduct(x,:rhs))
+        true
+    elseif istensor(ex,:rhs)
+        true
+    else
+        false
+    end
+end
+
+function issimpletensorproduct(ex)
+    if typeof(ex) != Expr
+        false
+    else
+        ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
+    end
+end
+
+
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
     # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
@@ -64,27 +91,6 @@ function tonameindex(ex,lorr) # A[:a,:b] -> :A,[:(:a),:(:b)]
     end
 end
 
-function istensorproduct(ex) # A[:a,:b] * (B[:b,:c] * C[(:c,:d)]) -> true
-    if typeof(ex) != Expr
-        false
-    elseif ex.head == :call &&
-        ex.args[1] == :* &&
-        all(ex.args[2:end] .|> x -> istensorproduct(x,:rhs))
-        true
-    elseif istensor(ex,:rhs)
-        true
-    else
-        false
-    end
-end
-
-function issimpletensorproduct(ex)
-    if typeof(ex) != Expr
-        false
-    else
-        ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
-    end
-end
 
 function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
     if length(ex.args) == 2

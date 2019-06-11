@@ -46,4 +46,13 @@ using Test
     @test TensorFunctions.istensor(:( [:a,(:b,:c)] ),:lhs) == true
     @test TensorFunctions.istensor(:( [(:a|4,:b|hoge(3)),:c*6] ),:lhs) == false
 
+    @test TensorFunctions.issimpletensor(:( foo[:a,:b,:c] )) == true
+    @test TensorFunctions.issimpletensor(:( foo(bar)[:a,:b,:c] )) == true
+    @test TensorFunctions.issimpletensor(:( foo(bar)[(:a,:b),:c] )) == false
+    @test TensorFunctions.issimpletensor(:( foo(bar)[(:a|hoge(2),:b),:c] )) == false
+    @test TensorFunctions.issimpletensor(:( foo(bar|>hugo)[(:a|4,:b|hoge(3)),:c*6] )) == false
+    @test TensorFunctions.issimpletensor(:( [:a,:b,:c] )) == false
+    @test TensorFunctions.issimpletensor(:( [:a,(:b,:c)] )) == false
+    @test TensorFunctions.issimpletensor(:( [(:a|4,:b|hoge(3)),:c*6] )) == false
+
 end

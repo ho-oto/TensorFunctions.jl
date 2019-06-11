@@ -83,8 +83,8 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     end
 end
 
-function totensor(ex)
-    if istensor(ex)
+function totensor(ex,lorr)
+    if istensor(ex,lorr)
         if ex.head == :vect
             nothing,ex.args
         else
@@ -175,9 +175,23 @@ function tensorproductmain(ex,contractorder)
 
     #= step 1 =#
     head,lhs,rhs = lhsrhs(ex)
-
-    return quote
-        reslhs = resrhs
+    tmp = Expr(:ref,rhs)
+    append!(tmp.args,totensor(lhs,:lhs)[2])
+    tmp = parsetensorproduct(tmp)
+    if head == :(<=) || head == :(=>)
+        tmp
+    else
+        lhsname = totensor(lhs,:lhs)[1]
+        op = if head == :(:=)
+            :(=)
+        elseif head == :(=)
+            :(.=)
+        elseif head == :(+=)
+            :(.+=)
+        elseif head == :(-=)
+            :(.-=)
+        end
+        Expr(op,lhsname,tmp)
     end
 end
 

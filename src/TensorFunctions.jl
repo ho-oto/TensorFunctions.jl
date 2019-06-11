@@ -36,27 +36,8 @@ istensor(ex::Expr,lorr) = (ex.head == :ref && all(ex.args[2:end] .|> x -> isinde
 issimpletensor(ex) = false
 issimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> issymbol)
 
-function istensorproduct(ex) # A[:a,:b] * (B[:b,:c] * C[(:c,:d)]) -> true
-    if typeof(ex) != Expr
-        false
-    elseif ex.head == :call &&
-        ex.args[1] == :* &&
-        all(ex.args[2:end] .|> x -> istensorproduct(x,:rhs))
-        true
-    elseif istensor(ex,:rhs)
-        true
-    else
-        false
-    end
-end
-
-function issimpletensorproduct(ex)
-    if typeof(ex) != Expr
-        false
-    else
-        ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
-    end
-end
+istensorproduct(ex) = false
+istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
 
 
 

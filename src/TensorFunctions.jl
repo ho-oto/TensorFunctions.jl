@@ -200,11 +200,11 @@ function tensormapmain(ex::Expr)
 end
 
 macro tensorfunc(ex::Expr)
-    tensorproductmain(ex)
+    esc(tensorproductmain(ex))
 end
 
 macro tensormap(ex::Expr)
-    tensormapmain(ex)
+    esc(tensormapmain(ex))
 end
 
 end # module

@@ -175,6 +175,10 @@ function makepairwised(ex::Expr,contractorder)
     end
 end
 
+function taketrace(ex)
+    ex #TODO:implement
+end
+
 function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
     # reshapeの必要なtensorをリストアップする : 0コなら何もしない
     # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...

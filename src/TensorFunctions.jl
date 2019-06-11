@@ -96,6 +96,14 @@ function istensorproduct(ex) # A[:a,:b] * (B[:b,:c] * C[(:c,:d)]) -> true
     end
 end
 
+function issimpletensorproduct(ex)
+    if typeof(ex) != Expr
+        false
+    else
+        ex.head == :call && ex.args[1] == :* && all(ex.args[2:end] .|> x -> istensor(x,:rhs))
+    end
+end
+
 function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
     if length(ex.args) == 2
         if ex.head in [:(=),:(:=),:(+=),:(-=)]

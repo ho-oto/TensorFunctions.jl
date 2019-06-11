@@ -138,13 +138,6 @@ function lhsrhs(ex::Expr)
 end
 
 function parsetensorproduct(ex,contractor=tensorcontract)
-    # (foo[a,b] * bar[b,c])[a,c] ->
-    # quote
-    # Foo = parsetensorproduct(foo[a,b])
-    # Bar = parsetensorproduct(bar[b,c])
-    # tensorcontract(Foo,Index1,Bar,Index2,Index3)
-    # end
-
     #TODO: use TensorOperator.contract_indices at compile time
     if !istensor(ex,:rhs)
         error("ex should be tensor")
@@ -167,12 +160,33 @@ function parsetensorproduct(ex,contractor=tensorcontract)
     end
 end
 
-function tensorproductmain(ex,contractorder::Union{Dict{Int,Symbol},NTuple{N,Int}} where N = nothing)
+function commonindex(indslis)
+    res = [indslis[1]...]
+    for inds in indslis[2:end]
+        for ind in inds
+            if ind in res
+                filter!(x->x!=ind,res)
+            else
+                push!(res,ind)
+            end
+        end
+    end
+    res
+end
+
+function haveduplicatedindex()
+    
+end
+
+function pairwisedrhs()
+
+end
+
+function tensorproductmain(ex,contractorder=nothing)
     # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
+    # 2. take trace
     # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
     # 4. reshape the result
-
-    #= step 1 =#
     head,lhs,rhs = lhsrhs(ex)
     rhs = pairwisedrhs(rhs,contractorder)
     tmp = Expr(:ref,rhs)

@@ -135,10 +135,20 @@ function parsetensorproduct(ex)
     # Bar = parsetensorproduct(bar[b,c])
     # tensorcontract(Foo,Index1,Bar,Index2,Index3)
     # end
-    if !istensor(ex)
+    if !istensor(ex,:rhs)
         error("ex should be tensor")
+    elseif istensorproduct(ex.args[1])
+        lhs = gensym()
+        rhs = gensym()
+        lhs2 = parsetensorproduct(ex.args[1].args[2])
+        rhs2 = parsetensorproduct(ex.args[1].args[3])
+        return quote
+            $lhs = $lhs2
+            $rhs = $rhs2
+            tensorcontract($lhs,$(ex.args[1].args[2].args[2:end]|>Tuple),$rhs,$(ex.args[1].args[3].args[2:end]|>Tuple),$(ex.args[2:end]|>Tuple))
+        end
     else
-
+        :($(ex.args[1]))
     end
 end
 

@@ -4,7 +4,6 @@ using Test
 @testset "TensorFunctions.jl" begin
     @test TensorFunctions.issymbol(:( :b )) == true
     @test TensorFunctions.issymbol(:( b )) == false
-    @test TensorFunctions.tosymbol(:( :b )) == :b
 
     @test TensorFunctions.isinpairedindex(:( :a ),:lhs) == true
     @test TensorFunctions.isinpairedindex(:( :b|1 ),:lhs) == false

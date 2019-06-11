@@ -2,12 +2,11 @@ module TensorFunctions
 
 using LinearAlgebra,TensorOperations
 
-export @tensorfunc,@tensormap
+export @tensorfunc#,@tensormap
 
 issymbol(ex) = typeof(ex) == QuoteNode ? true : false
-tosymbol(ex) = issymbol(ex) ? ex.value : nothing
 
-function isinpairedindex(ex,lorr)
+function isinpairedindex(ex,lorr) # :a|hoge,:a -> true
     if lorr == :rhs
         if typeof(ex) == Expr
             ex.head == :call &&
@@ -24,7 +23,7 @@ function isinpairedindex(ex,lorr)
     end
 end
 
-function ispairedindex(ex,lorr)
+function ispairedindex(ex,lorr) # (:a,:b|hoge,:c),(:a,:b) -> true
     if typeof(ex) != Expr
         false
     elseif ex.head != :tuple
@@ -34,7 +33,7 @@ function ispairedindex(ex,lorr)
     end
 end
 
-function isindexproduct(ex)
+function isindexproduct(ex) # :a*4,:b*5 -> true
     if typeof(ex) != Expr
         false
     elseif ex.head == :call &&
@@ -50,7 +49,7 @@ end
 
 isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || isindexproduct(ex)
 
-function istensor(ex,lorr)
+function istensor(ex,lorr) # (hoge)[:a,:b,(:c,:d),:e*5] -> true
     if typeof(ex) != Expr
         false
     elseif ex.head == :ref
@@ -67,6 +66,8 @@ function istensor(ex,lorr)
 end
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
+    # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
+    # TODO:
     if !istensor(ex,:rhs)
         error("not tensor")
     else
@@ -83,7 +84,7 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     end
 end
 
-function totensor(ex,lorr)
+function tonameindex(ex,lorr) # A[:a,:b] -> :A,[:(:a),:(:b)]
     if istensor(ex,lorr)
         if ex.head == :vect
             nothing,ex.args
@@ -91,23 +92,25 @@ function totensor(ex,lorr)
             ex.args[1],ex.args[2:end]
         end
     else
-        nothing,nothing
+        error("not tensor")
     end
 end
 
-function istensorproduct(ex)
+function istensorproduct(ex) # A[:a,:b] * (B[:b,:c] * C[(:c,:d)]) -> true
     if typeof(ex) != Expr
         false
     elseif ex.head == :call &&
         ex.args[1] == :* &&
-        all(ex.args[2:end] .|> x -> istensor(x,:rhs))
+        all(ex.args[2:end] .|> x -> istensorproduct(x,:rhs))
+        true
+    elseif istensor(ex,:rhs)
         true
     else
         false
     end
 end
 
-function lhsrhs(ex::Expr)
+function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
     if length(ex.args) == 2
         if ex.head in [:(=),:(:=),:(+=),:(-=)]
             if istensor(ex.args[1],:lhs) && istensorproduct(ex.args[2])
@@ -174,28 +177,45 @@ function commonindex(indslis)
     res
 end
 
-function haveduplicatedindex()
-    
-end
+haveduplicatedindex(inds) = (inds|>Set|>length) != (inds|>length)
 
-function pairwisedrhs()
+function makepairwised(ex::Expr,contractorder)
+    #N個の積か確かめる
+    #2個の積で->終了
+    #indexリストの中で一番小さなやつを共有している2つをペアにしてindexを露出させる
+    #ペアにしたやつにmakepairwisedを作用させたヤツと、残りにmakepairwisedを作用させたヤツのペアを返す
+    if ex.head != :call || ex.args[1] != :*
+        error("parse error")
+    elseif length(ex.args) == 3 #2コの積
+        # hoge[] * huga[] or (hoge[] * huga[])[] * piyo[] or (hoge[] * huga[]) * piyo[]
+        if ex.args[2].head == ex.args[3].head == :ref &&
+            !(istensorproduct(ex.args[2].args[1])) &&
+            !(istensorproduct(ex.args[3].args[1])) #nameがもはやtensorproductではない
+            ex #そのまま返す
+        elseif istensorproduct(ex.args[2]) # 最初がtensorproductでindexが露出していない
+            exx = copy(ex)
+            exx.args[2] = Expr(:ref,ex.args[2],commonindex(ex.args[2]))
+            makepairwised(exx,contractorder)
+        else
 
+        end
+    end
 end
 
 function tensorproductmain(ex,contractorder=nothing)
-    # 1. A[(:a,:b),:c*5] -> reshape(A,...)[:a,:b,:c]
-    # 2. take trace
+    # 0. calculate dimension list (dim(:a) = ...,)
+    # 1. A[(:a,:b),:c*5,:d,:d] -> reshape(trace(A),...)[:a,:b,:c] (tosimpletensor)
     # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
     # 4. reshape the result
-    head,lhs,rhs = lhsrhs(ex)
-    rhs = pairwisedrhs(rhs,contractorder)
-    tmp = Expr(:ref,rhs)
-    append!(tmp.args,totensor(lhs,:lhs)[2])
-    tmp = parsetensorproduct(tmp)
+    head,lhs,rhs = toheadlhsrhs(ex)
+    rhs = makepairwised(rhs,contractorder)
+    rhs = Expr(:ref,rhs)
+    append!(rhs.args,tonameindex(lhs,:lhs)[2])
+    rhs = parsetensorproduct(rhs)
     if head == :(<=) || head == :(=>)
-        tmp
+        rhs
     else
-        lhsname = totensor(lhs,:lhs)[1]
+        lhsname = tonameindex(lhs,:lhs)[1]
         op = if head == :(:=)
             :(=)
         elseif head == :(=)
@@ -205,20 +225,23 @@ function tensorproductmain(ex,contractorder=nothing)
         elseif head == :(-=)
             :(.-=)
         end
-        Expr(op,lhsname,tmp)
+        Expr(op,lhsname,rhs)
     end
-end
-
-function tensormapmain(ex::Expr)
-    ex
 end
 
 macro tensorfunc(ex::Expr)
     esc(tensorproductmain(ex))
 end
 
+
+#= TODO: implement
+function tensormapmain(ex::Expr)
+    ex
+end
+
 macro tensormap(ex::Expr)
     esc(tensormapmain(ex))
 end
+=#
 
 end # module

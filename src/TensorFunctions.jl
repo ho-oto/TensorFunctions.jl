@@ -144,6 +144,8 @@ function parsetensorproduct(ex,contractor=tensorcontract)
     # Bar = parsetensorproduct(bar[b,c])
     # tensorcontract(Foo,Index1,Bar,Index2,Index3)
     # end
+
+    #TODO: use TensorOperator.contract_indices at compile time
     if !istensor(ex,:rhs)
         error("ex should be tensor")
     elseif istensorproduct(ex.args[1])

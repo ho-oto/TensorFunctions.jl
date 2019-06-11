@@ -58,7 +58,7 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     end
 end
 
-function tonameindex(ex::Expr,lorr) # A[:a,:b] -> :A,[:(:a),:(:b)]
+function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
     if ex.head == :vect
         nothing,ex.args
     elseif ex.head == :ref
@@ -166,8 +166,23 @@ function makepairwised(ex::Expr,contractorder)
     end
 end
 
-function taketrace(ex)
-    ex #TODO:implement
+function taketrace(ex::Expr,tracefunc=tensortrace)
+    if istensorproduct(ex)
+        exx = copy(ex)
+        for i in 2:length(ex.args)
+            exx.args[i] = taketrace(ex.args[i])
+        end
+        exx
+    elseif istensor(ex)
+        tname,tind = tonameindex(ex)
+        if haveduplicatedindex([tind])
+            newtind = nonduplicateindex([tind])
+            :($tracefunc($tname,$tind,$newtind)$newtind)
+        else
+            ex
+        end
+
+    end
 end
 
 function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)

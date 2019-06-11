@@ -29,17 +29,9 @@ isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* && length(ex.arg
 
 isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || (lorr == :rhs && isindexproduct(ex))
 
-function istensor(ex,lorr) # (hoge)[:a,:b,(:c,:d),:e*5] -> true
-    if typeof(ex) != Expr
-        false
-    elseif ex.head == :ref
-        all(ex.args[2:end] .|> x -> isindex(x,lorr))
-    elseif ex.head == :vect
-        all(ex.args .|> x -> isindex(x,lorr)) && (lorr == :lhs)
-    else
-        false
-    end
-end
+istensor(ex,lorr) = false
+istensor(ex::Expr,lorr) = (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,lorr))) ||
+    (ex.head == :vect && all(ex.args .|> x -> isindex(x,lorr)) && (lorr == :lhs))
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
     # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]

@@ -47,7 +47,7 @@ function isindexproduct(ex) # :a*4,:b*5 -> true
     end
 end
 
-isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || isindexproduct(ex)
+isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || (lorr == :rhs && isindexproduct(ex))
 
 function istensor(ex,lorr) # (hoge)[:a,:b,(:c,:d),:e*5] -> true
     if typeof(ex) != Expr

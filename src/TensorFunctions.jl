@@ -9,10 +9,7 @@ issymbol(ex) = typeof(ex) == QuoteNode ? true : false
 function isinpairedindex(ex,lorr) # :a|hoge,:a -> true
     if lorr == :rhs
         if typeof(ex) == Expr
-            ex.head == :call &&
-            ex.args[1] == :| &&
-            issymbol(ex.args[2]) &&
-            length(ex.args) == 3
+            ex.head == :call && ex.args[1] == :| && issymbol(ex.args[2]) && length(ex.args) == 3
         else
             issymbol(ex)
         end
@@ -26,24 +23,17 @@ end
 function ispairedindex(ex,lorr) # (:a,:b|hoge,:c),(:a,:b) -> true
     if typeof(ex) != Expr
         false
-    elseif ex.head != :tuple
-        false
     else
-        all(ex.args .|> x -> isinpairedindex(x,lorr))
+        (ex.head == :tuple) && all(ex.args .|> x -> isinpairedindex(x,lorr))
     end
 end
 
 function isindexproduct(ex) # :a*4,:b*5 -> true
     if typeof(ex) != Expr
         false
-    elseif ex.head == :call &&
-        ex.args[1] == :* &&
-        issymbol(ex.args[2]) &&
-        typeof(ex.args[3]) == Int &&
-        length(ex.args) == 3
-        true
     else
-        false
+        ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
+        ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
     end
 end
 
@@ -55,11 +45,7 @@ function istensor(ex,lorr) # (hoge)[:a,:b,(:c,:d),:e*5] -> true
     elseif ex.head == :ref
         all(ex.args[2:end] .|> x -> isindex(x,lorr))
     elseif ex.head == :vect
-        if lorr != :lhs
-            false
-        else
-            all(ex.args .|> x -> isindex(x,lorr))
-        end
+        all(ex.args .|> x -> isindex(x,lorr)) && (lorr == :lhs)
     else
         false
     end

@@ -67,13 +67,11 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     end
 end
 
-function tonameindex(ex,lorr) # A[:a,:b] -> :A,[:(:a),:(:b)]
-    if istensor(ex,lorr)
-        if ex.head == :vect
-            nothing,ex.args
-        else
-            ex.args[1],ex.args[2:end]
-        end
+function tonameindex(ex::Expr,lorr) # A[:a,:b] -> :A,[:(:a),:(:b)]
+    if ex.head == :vect
+        nothing,ex.args
+    elseif ex.head == :ref
+        ex.args[1],ex.args[2:end]
     else
         error("not tensor")
     end
@@ -177,32 +175,26 @@ function makepairwised(ex::Expr,contractorder)
     end
 end
 
-function tensorproductmain(ex,contractorder=nothing)
-    # 0. calculate dimension list (dim(:a) = ...,)
-    # 1. A[(:a,:b),:c*5,:d,:d] -> reshape(trace(A),...)[:a,:b,:c] (tosimpletensor)
-    # 3. A*B*C*D*E -> (( A[foo,bar] * B[bar,hoge] )[foo,hoge] * ( C[...] * ( D[...] * E[...] ))[...])[hoge,huga]
-    # 4. reshape the result
-    head,lhs,rhs = toheadlhsrhs(ex)
-    rhs = tosimpletensor(rhs)
-    rhs = taketensor(rhs)
-    rhs = makepairwised(rhs,contractorder)
-    rhs = Expr(:ref,rhs)
-    append!(rhs.args,tonameindex(lhs,:lhs)[2])
+function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
+    # reshapeの必要なtensorをリストアップする : 0コなら何もしない
+    # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...
+    # 明示的に決まっているやつをリストに足す
+    # ()の中で不明なのが残っていれば残りから決める : :d = div(size(D,1),(hoge*huga*piyo))
+    # 元のExprから何も考えずに()と*Intを外したものを作る
+    # 愚直にreshapeする
+    # TODO: reshape the result
+    head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
+    rhs = tosimpletensor(rhs) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
+    rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
+    rhs = makepairwised(rhs,contractorder) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
+    rhs = Expr(:ref,rhs,tonameindex(lhs)[2]...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
     rhs = parsetensorproduct(rhs)
     if head == :(<=) || head == :(=>)
         rhs
     else
-        lhsname = tonameindex(lhs,:lhs)[1]
-        op = if head == :(:=)
-            :(=)
-        elseif head == :(=)
-            :(.=)
-        elseif head == :(+=)
-            :(.+=)
-        elseif head == :(-=)
-            :(.-=)
-        end
-        Expr(op,lhsname,rhs)
+        lhs = tonameindex(lhs)[1]
+        op = Dict(:(:=) => :(=),:(=) => :(.=),:(+=) => :(.+=),:(-=) => :(.-=))[head]
+        Expr(op,lhs,rhs)
     end
 end
 

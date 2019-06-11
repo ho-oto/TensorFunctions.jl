@@ -205,7 +205,7 @@ function tensorproductmain(ex,contractorder)
 end
 
 function tensormapmain(ex::Expr)
-
+    ex
 end
 
 macro tensorfunc(ex::Expr)

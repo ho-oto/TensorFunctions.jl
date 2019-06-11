@@ -108,20 +108,29 @@ function istensorproduct(ex)
 end
 
 function lhsrhs(ex::Expr)
-    if length(ex.args) != 2
-        error("parse error")
-    end
-    if ex.head in [:(=),:(:=),:(<=),:(+=),:(-=)]
-        if istensor(ex.args[1],:lhs) && istensorproduct(ex.args[2])
-            return ex.head,ex.args[1],ex.args[2]
+    if length(ex.args) == 2
+        if ex.head in [:(=),:(:=),:(+=),:(-=)]
+            if istensor(ex.args[1],:lhs) && istensorproduct(ex.args[2])
+                return ex.head,ex.args[1],ex.args[2]
+            else
+                error("parse error")
+            end
         else
             error("parse error")
         end
-    elseif ex.head == :(=>)
-        if istensor(ex.args[2],:lhs) && istensorproduct(ex.args[1])
-            return ex.head,ex.args[2],ex.args[1]
-        else
-            error("parse error")
+    elseif length(ex.args) == 3
+        if ex.head == :call && ex.args[1] == :(<=)
+            if istensor(ex.args[2],:lhs) && istensorproduct(ex.args[3])
+                return ex.args[1],ex.args[2],ex.args[3]
+            else
+                error("parse error")
+            end
+        elseif ex.head == :call && ex.args[1] == :(=>)
+            if istensor(ex.args[3],:lhs) && istensorproduct(ex.args[2])
+                return ex.args[1],ex.args[3],ex.args[2]
+            else
+                error("parse error")
+            end
         end
     else
         error("parse error")

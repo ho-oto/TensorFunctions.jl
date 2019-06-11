@@ -6,19 +6,10 @@ export @tensorfunc#,@tensormap
 
 issymbol(ex) = typeof(ex) == QuoteNode
 
-function isinpairedindex(ex,lorr) # :a|hoge,:a -> true
-    if lorr == :rhs
-        if typeof(ex) == Expr
-            ex.head == :call && ex.args[1] == :| && issymbol(ex.args[2]) && length(ex.args) == 3
-        else
-            issymbol(ex)
-        end
-    elseif lorr == :lhs
-        issymbol(ex)
-    else
-        error(":lhs or :rhs")
-    end
-end
+isinpairedindex(ex,lorr) = false
+isinpairedindex(ex::QuoteNode,lorr) = true
+isinpairedindex(ex::Expr,lorr) = lorr == :rhs && ex.head == :call && ex.args[1] == :| &&
+    issymbol(ex.args[2]) && length(ex.args) == 3
 
 ispairedindex(ex,lorr) = false
 ispairedindex(ex::Expr,lorr) = (ex.head == :tuple) && all(ex.args .|> x -> isinpairedindex(x,lorr))

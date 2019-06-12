@@ -42,12 +42,13 @@ issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
 
 #= elementary functions for parser =#
 function toindint(ex::Expr)
-    if isindexproduct(ex)
-        if typeof(ex.args[2]) == Int ; ex.args[3],ex.args[2]
-        else                         ; ex.args[2],ex.args[3]
-        end
+    if !isindexproduct(ex)
+        error("not Int*Symbos")
+    end
+    if typeof(ex.args[2]) == QuoteNode
+        ex.args[2],ex.args[3]
     else
-        error("not product of index and Int")
+        ex.args[3],ex.args[2]
     end
 end
 

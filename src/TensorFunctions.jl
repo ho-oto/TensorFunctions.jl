@@ -6,30 +6,33 @@ export @tensorfunc#,@tensormap
 
 issymbol(ex) = typeof(ex) == QuoteNode
 
-isinpairedindex(ex,lorr) = false
-isinpairedindex(ex::QuoteNode,lorr) = true
-isinpairedindex(ex::Expr,lorr) = lorr == :rhs && ex.head == :call && ex.args[1] == :| &&
-    issymbol(ex.args[2]) && length(ex.args) == 3
+isinpairedindex(ex,inrhs::Bool=true) = false
+isinpairedindex(ex::QuoteNode,inrhs::Bool=true) = true
+isinpairedindex(ex::Expr,inrhs::Bool=true) = inrhs && ex.head == :call &&
+    ex.args[1] == :| && issymbol(ex.args[2]) && length(ex.args) == 3
 
-ispairedindex(ex,lorr) = false
-ispairedindex(ex::Expr,lorr) = (ex.head == :tuple) && all(ex.args .|> x -> isinpairedindex(x,lorr))
+ispairedindex(ex,inrhs::Bool=true) = false
+ispairedindex(ex::Expr,inrhs::Bool=true) = (ex.head == :tuple) &&
+    all(ex.args .|> x -> isinpairedindex(x,inrhs))
 
 isindexproduct(ex) = false
-isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
-    ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
+isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
+    length(ex.args) == 3 && ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
 
-isindex(ex,lorr) = issymbol(ex) || ispairedindex(ex,lorr) || (lorr == :rhs && isindexproduct(ex))
+isindex(ex,inrhs::Bool=true) = issymbol(ex) || ispairedindex(ex,inrhs) ||
+    (inrhs && isindexproduct(ex))
 
-istensor(ex,lorr) = false
-istensor(ex::Expr,lorr) = (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,lorr))) ||
-    (ex.head == :vect && all(ex.args .|> x -> isindex(x,lorr)) && (lorr == :lhs))
+istensor(ex,inrhs::Bool=true) = false
+istensor(ex::Expr,inrhs::Bool=true) =
+    (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,inrhs))) ||
+    (ex.head == :vect && all(ex.args .|> x -> isindex(x,inrhs)) && !inrhs)
 
 issimpletensor(ex) = false
 issimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> issymbol)
 
 istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
-    all(ex.args[2:end] .|> x -> istensor(x,:rhs))
+    all(ex.args[2:end] .|> x -> istensor(x))
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
     if istensorproduct(ex)
@@ -41,7 +44,7 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     elseif istensor(ex)
         # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
         # TODO:
-        if !istensor(ex,:rhs)
+        if !istensor(ex)
             error("not tensor")
         else
             tensorname = ex.args[1]
@@ -72,7 +75,7 @@ end
 function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
     if length(ex.args) == 2
         if ex.head in [:(=),:(:=),:(+=),:(-=)]
-            if istensor(ex.args[1],:lhs) && istensorproduct(ex.args[2])
+            if istensor(ex.args[1],false) && istensorproduct(ex.args[2])
                 return ex.head,ex.args[1],ex.args[2]
             else
                 error("parse error")
@@ -82,13 +85,13 @@ function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
         end
     elseif length(ex.args) == 3
         if ex.head == :call && ex.args[1] == :(<=)
-            if istensor(ex.args[2],:lhs) && istensorproduct(ex.args[3])
+            if istensor(ex.args[2],false) && istensorproduct(ex.args[3])
                 return ex.args[1],ex.args[2],ex.args[3]
             else
                 error("parse error")
             end
         elseif ex.head == :call && ex.args[1] == :(=>)
-            if istensor(ex.args[3],:lhs) && istensorproduct(ex.args[2])
+            if istensor(ex.args[3],false) && istensorproduct(ex.args[2])
                 return ex.args[1],ex.args[3],ex.args[2]
             else
                 error("parse error")
@@ -101,7 +104,7 @@ end
 
 function parsetensorproduct(ex,contractor=tensorcontract)
     #TODO: use TensorOperator.contract_indices at compile time
-    if !istensor(ex,:rhs)
+    if !istensor(ex)
         error("ex should be tensor")
     elseif istensorproduct(ex.args[1])
         lhs = gensym()

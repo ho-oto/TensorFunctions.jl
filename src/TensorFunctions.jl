@@ -52,10 +52,21 @@ function toindint(ex::Expr)
     end
 end
 
-function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
-    if     ex.head == :vect ; nothing,ex.args
-    elseif ex.head == :ref  ; ex.args[1],ex.args[2:end]
-    else                    ; error("not tensor")
+function toname(ex::Expr)
+    if !istensor(ex)
+        error("not tensor")
+    end
+    ex.args[1]
+end
+
+function toindex(ex::Expr)
+    if !istensor(ex,true) && !istensor(ex,false)
+        error("not tensor")
+    end
+    if ex.head == :ref
+        ex.args[2:end]
+    elseif ex.head == :vect
+        ex.args
     end
 end
 
@@ -205,7 +216,7 @@ function taketrace(ex::Expr,tracefunc=tensortrace)
         end
         exx
     elseif istensor(ex)
-        tname,tind = tonameindex(ex)
+        tname,tind = toname(ex),toindex(ex)
         if length(duplicateindex([tind])[2]) != 0
             newtind = duplicateindex([tind])[1]
             :($tracefunc($tname,$tind,$newtind)$newtind)
@@ -276,11 +287,11 @@ function tensorproductmain(ex,ord)
     rhs = tosimpletensor(rhs,arg) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
     rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
     rhs = makepairwised(rhs,order(ord)) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
-    rhs = Expr(:ref,rhs,tonameindex(lhs)[2]...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
+    rhs = Expr(:ref,rhs,toindex(lhs)...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
     rhs = parsetensorproduct(rhs)
     # reshape result here
     if !(head in [:(<=),:(=>)])
-        lhs = tonameindex(lhs)[1]
+        lhs = toname(lhs)
         op = Dict(:(:=) => :(=),:(=) => :(.=),:(+=) => :(.+=),:(-=) => :(.-=))[head]
         rhs = Expr(op,lhs,rhs)
     end

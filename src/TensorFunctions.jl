@@ -28,8 +28,10 @@ istensor(ex::Expr,inrhs::Bool=true) =
     (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,inrhs))) ||
     (ex.head == :vect && all(ex.args .|> x -> isindex(x,inrhs)) && !inrhs)
 
-issimpletensor(ex) = false
-issimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> issymbol)
+issimpletensor(ex,inrhs::Bool=true) = false
+issimpletensor(ex::Expr,inrhs::Bool=true) =
+    (ex.head == :ref && all(ex.args[2:end] .|> issymbol)) ||
+    (ex.head == :vect && all(ex.args .|> issymbol) && !inrhs)
 
 istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
@@ -63,11 +65,7 @@ function toindex(ex::Expr)
     if !issimpletensor(ex,true) && !issimpletensor(ex,false)
         error("not tensor")
     end
-    if ex.head == :ref
-        ex.args[2:end]
-    elseif ex.head == :vect
-        ex.args
-    end
+    (ex.head == :ref) ? ex.args[2:end] : ex.args
 end
 
 function toheadlhsrhs(ex::Expr)

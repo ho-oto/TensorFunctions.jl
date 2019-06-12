@@ -73,7 +73,7 @@ function toheadlhsrhs(ex::Expr)
     end
 end
 
-function duplicateindex(indslis::Array{<:Array{<:Any,1},1})
+function duplicateindex(indslis::Array{<:Any,1})
     res = Any[]; dup = Any[]
     for inds in indslis
         for ind in inds
@@ -219,26 +219,28 @@ function order(ord::NTuple{N,Symbol} where N)
     ord
 end
 
-function makepairwised(ex::Expr,contractorder)
-    if ex.head != :call || ex.args[1] != :*
-        error("parse error")
-    elseif length(ex.args) == 3 #2コの積
-        ex
-    else
-        # 露出しているindexの中で一若いのをペアにして全体を自分に食わせる
-        exx = copy(ex)
-        indslis = [i.args[2:end] for i in ex.args[2:end]]
-        tmp = Int[]
-        for j in contractorder
-            for k in 1:length(indslis)
-                if j in indslis[k]; push!(tmp,k); end
-            end
-            if length(tmp) == 2; break; end
-        end
-        filter!(x->!(x in tmp),exx.args[2:end])
-        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),nonduplicateindex()...))
-        makepairwised(exx)
+function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
+    if !issimpletensorproduct(ex)
+        error("input is not tensor producr")
     end
+    if length(ex.args) == 3
+        return ex
+    end
+    indslis = [i.args[2:end] for i in ex.args[2:end]]
+    nondup,dup = duplicateindex(indslis)
+    tmp = nothing
+    for i in ord
+        if i in dup
+            tmp = i
+            break
+        end
+    end
+    tmptmp = filter(x->(tmp in x.args[2:end]),ex.args[2:end])
+    newcommonind,dst = duplicateindex([i.args[2:end] for i in tmptmp])
+    argss = filter(x->!(tmp in x.args[2:end]),ex.args[2:end])
+    exx = Expr(:call,:*,argss...)
+    push!(exx.args,Expr(:ref,Expr(:call,:*,tmptmp...),newcommonind...))
+    makepairwised(exx,ord)
 end
 
 

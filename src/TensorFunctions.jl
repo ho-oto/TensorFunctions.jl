@@ -140,22 +140,20 @@ function bonddimdict(ex::Expr)
             end
         end
     end
-    for i in keys(resdict)
-        if resdict[i] == nothing
-            tmp = []
-            tmptmp = []
-            for j in 1:length(pairedindexlis)
-                if i in pairedindexlis[j]
-                    push!(tmp,pairedindexlis[j])
-                    push!(tmptmp,pairedindexlistot[j])
-                end
+    for i in filter(x->resdict[x]==nothing,keys(resdict))
+        tmp = []
+        tmptmp = []
+        for j in 1:length(pairedindexlis)
+            if i in pairedindexlis[j]
+                push!(tmp,pairedindexlis[j])
+                push!(tmptmp,pairedindexlistot[j])
             end
-            for j in 1:length(tmp)
-                if count(x->x==nothing, tmp[j]) == 1
-                    denomi = Expr(:call,:prod,filter(x->x!=nothing,tmp[j])...)
-                    resdict[i] = :(div(pairedindexlistot[j],$denomi))
-                    break
-                end
+        end
+        for j in 1:length(tmp)
+            if count(x->resdict[x]==nothing, tmp[j]) == 1
+                denomi = Expr(:call,:prod,map(x->resdict[x],filter(x->resdict[x]!=nothing,tmp[j]))...)
+                resdict[i] = :(div($(pairedindexlistot[j]),$denomi))
+                break
             end
         end
     end

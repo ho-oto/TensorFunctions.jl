@@ -84,20 +84,20 @@ function toheadlhsrhs(ex::Expr)
 end
 
 function duplicateindex(indslis::Array{<:Any,1})
-    res = Any[]; dup = Any[]
+    nodup = Any[]; dup = Any[]
     for inds in indslis
         for ind in inds
             if ind in dup
                 error("same index appears more than two times")
-            elseif ind in res
-                filter!(x->x!=ind,res)
+            elseif ind in nodup
+                filter!(x->x!=ind,nodup)
                 push!(dup,ind)
             else
-                push!(res,ind)
+                push!(nodup,ind)
             end
         end
     end
-    res,dup
+    nodup,dup
 end
 function duplicateindex(ex::Expr)
     if issimpletensorproduct(ex)

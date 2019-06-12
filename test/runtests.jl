@@ -63,5 +63,11 @@ using Test
     @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c])[:a,:c] * C[(:c,:d)] )) == true
 
 
+    # reshapeの必要なtensorをリストアップする : 0コなら何もしない
+    # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...
+    # 明示的に決まっているやつをリストに足す
+    # ()の中で不明なのが残っていれば残りから決める : :d = div(size(D,1),(hoge*huga*piyo))
+    # 元のExprから何も考えずに()と*Intを外したものを作る
+    # 愚直にreshapeする
 
 end

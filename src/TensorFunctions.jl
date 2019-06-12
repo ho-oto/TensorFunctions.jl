@@ -41,6 +41,16 @@ issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
 #= end Bool functions =#
 
 #= elementary functions for parser =#
+function toindint(ex::Expr)
+    if isindexproduct(ex)
+        if typeof(ex.args[2]) == Int; ex.args[3],ex.args[2]
+        else                        ; ex.args[2],ex.args[3]
+        end
+    else
+        error("not product of index and Int")
+    end
+end
+
 function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
     if     ex.head == :vect ; nothing,ex.args
     elseif ex.head == :ref  ; ex.args[1],ex.args[2:end]
@@ -84,6 +94,9 @@ function duplicateindex(ex::Expr)
     if issimpletensorproduct(ex)
         indslis = [i.args[2:end] for i in ex.args[2:end]]
         duplicateindex(indslis)
+    elseif issimpletensor(ex)
+        indslis = [ex.args[2:end]]
+        duplicateindex(indslis)
     else
         error("ex should be product of tensors")
     end
@@ -91,7 +104,60 @@ end
 #= end elementary functions for parse =#
 
 # main steps of parse =#
-function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr}})
+function bonddimdict(ex::Expr)
+    if !istensorproduct(ex)
+        error("not tensorproduct")
+    end
+    resdict = Dict{QuoteNode,T where T <:Union{Int,Symbol,Expr,Nothing}}()
+    pairedindexlis = []
+    for tens in ex.args[2:end]
+        pos = 1
+        posorig = 1
+        for ind in tens.args[2:end]
+            if issymbol(ind)
+                resdict[ind] = :(size($(tens.args[1]),$pos))
+                pos += 1
+                posorig += 1
+            elseif ispairedindex(ind)
+                tmp = []
+                for indd in ind.args
+                    if typeof(indd) == Expr
+                        resdict[indd.args[2]] = indd.args[3]
+                    elseif typeof(indd) == QuoteNode && !haskey(resdict,indd)
+                        resdict[indd] = nothing
+                    end
+                    pos += 1
+                    push!(tmp,indd)
+                end
+                push!(pairedindexlis,tmp)
+                posorig += 1
+            elseif isindexproduct(ind)
+                indname,posshift=toindint(ind)
+                resdict[indname] = :(size($(tens.args[1]))[$pos:$pos+$posshift-1]|>prod)
+                pos += posshift
+                posorig += posshift
+            else
+                error("cannot parse")
+            end
+        end
+    end
+    for i in keys(resdict)
+        if resdict[i] == nothing
+            tmp = []
+            for j in pairedindexlis
+                if i in j
+                    push!(tmp,j)
+                end
+            end
+            for j in tmp
+
+            end
+        end
+    end
+    resdict
+end
+
+function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr,Nothing}})
     if istensorproduct(ex)
         exx = copy(ex)
         for i in 2:length(ex.args)
@@ -135,6 +201,11 @@ function taketrace(ex::Expr,tracefunc=tensortrace)
         end
 
     end
+end
+
+order(ord) = error("not supported now")
+function order(ord::NTuple{N,Symbol} where N)
+    ord
 end
 
 function makepairwised(ex::Expr,contractorder)
@@ -185,18 +256,12 @@ end
 #= end main steps of parse =#
 
 
-function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
-    # reshapeの必要なtensorをリストアップする : 0コなら何もしない
-    # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...
-    # 明示的に決まっているやつをリストに足す
-    # ()の中で不明なのが残っていれば残りから決める : :d = div(size(D,1),(hoge*huga*piyo))
-    # 元のExprから何も考えずに()と*Intを外したものを作る
-    # 愚直にreshapeする
+function tensorproductmain(ex,ord)
     head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
     arg = bonddimdict(rhs)
     rhs = tosimpletensor(rhs,arg) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
     rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
-    rhs = makepairwised(rhs,contractorder) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
+    rhs = makepairwised(rhs,order(ord)) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
     rhs = Expr(:ref,rhs,tonameindex(lhs)[2]...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
     rhs = parsetensorproduct(rhs)
     # reshape result here

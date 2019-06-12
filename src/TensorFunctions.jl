@@ -109,14 +109,13 @@ function bonddimdict(ex::Expr)
     end
     resdict = Dict{QuoteNode,T where T <:Union{Int,Symbol,Expr,Nothing}}()
     pairedindexlis = []
+    pairedindexlistot = []
     for tens in ex.args[2:end]
-        pos = 1
-        posorig = 1
+        pos = posorig = 1
         for ind in tens.args[2:end]
             if issymbol(ind)
                 resdict[ind] = :(size($(tens.args[1]),$pos))
-                pos += 1
-                posorig += 1
+                pos += 1; posorig += 1
             elseif ispairedindex(ind)
                 tmp = []
                 for indd in ind.args
@@ -129,6 +128,7 @@ function bonddimdict(ex::Expr)
                     push!(tmp,indd)
                 end
                 push!(pairedindexlis,tmp)
+                push!(pairedindexlistot,:(size($(tens.args[1]),$posorig)))
                 posorig += 1
             elseif isindexproduct(ind)
                 indname,posshift=toindint(ind)
@@ -143,13 +143,19 @@ function bonddimdict(ex::Expr)
     for i in keys(resdict)
         if resdict[i] == nothing
             tmp = []
-            for j in pairedindexlis
-                if i in j
-                    push!(tmp,j)
+            tmptmp = []
+            for j in 1:length(pairedindexlis)
+                if i in pairedindexlis[j]
+                    push!(tmp,pairedindexlis[j])
+                    push!(tmptmp,pairedindexlistot[j])
                 end
             end
-            for j in tmp
-
+            for j in 1:length(tmp)
+                if count(x->x==nothing, tmp[j]) == 1
+                    denomi = Expr(:call,:prod,filter(x->x!=nothing,tmp[j])...)
+                    resdict[i] = :(div(pairedindexlistot[j],$denomi))
+                    break
+                end
             end
         end
     end

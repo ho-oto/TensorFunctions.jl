@@ -60,7 +60,7 @@ function toname(ex::Expr)
 end
 
 function toindex(ex::Expr)
-    if !istensor(ex,true) && !istensor(ex,false)
+    if !issimpletensor(ex,true) && !issimpletensor(ex,false)
         error("not tensor")
     end
     if ex.head == :ref

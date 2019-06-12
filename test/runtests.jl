@@ -65,6 +65,9 @@ using Test
     @test TensorFunctions.toindint(:( :a*5 )) == (:(:a),5)
     @test TensorFunctions.toindint(:( 5*:a )) == (:(:a),5)
 
+    @test TensorFunctions.toname(:( A[5*:a,:c,(:d,:e)] )) == :A
+    @test TensorFunctions.toindex(:( A[:a,:c,:d,:e] )) == [:(:a),:(:c),:(:d),:(:e)]
+    @test TensorFunctions.toindex(:( [:a,:c,:d,:e] )) == [:(:a),:(:c),:(:d),:(:e)]
     # reshapeの必要なtensorをリストアップする : 0コなら何もしない
     # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...
     # 明示的に決まっているやつをリストに足す

@@ -160,11 +160,11 @@ function bonddimdict(ex::Expr)
     resdict
 end
 
-function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr,Nothing}})
+function tosimpletensor(ex,arg::Dict{QuoteNode,Any})
     if istensorproduct(ex)
         exx = copy(ex)
         for i in 2:length(ex.args)
-            exx.args[i] = tosimpletensor(ex.args[i])
+            exx.args[i] = tosimpletensor(ex.args[i],arg)
         end
         exx
     elseif istensor(ex)

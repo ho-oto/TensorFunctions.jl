@@ -99,17 +99,6 @@ function duplicateindex(indslis::Array{<:Any,1})
     end
     nodup,dup
 end
-function duplicateindex(ex::Expr)
-    if issimpletensorproduct(ex)
-        indslis = [i.args[2:end] for i in ex.args[2:end]]
-        duplicateindex(indslis)
-    elseif issimpletensor(ex)
-        indslis = [ex.args[2:end]]
-        duplicateindex(indslis)
-    else
-        error("ex should be product of tensors")
-    end
-end
 #= end elementary functions for parse =#
 
 # main steps of parse =#

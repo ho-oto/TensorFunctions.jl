@@ -43,8 +43,8 @@ issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
 #= elementary functions for parser =#
 function toindint(ex::Expr)
     if isindexproduct(ex)
-        if typeof(ex.args[2]) == Int; ex.args[3],ex.args[2]
-        else                        ; ex.args[2],ex.args[3]
+        if typeof(ex.args[2]) == Int ; ex.args[3],ex.args[2]
+        else                         ; ex.args[2],ex.args[3]
         end
     else
         error("not product of index and Int")
@@ -74,8 +74,7 @@ function toheadlhsrhs(ex::Expr)
 end
 
 function duplicateindex(indslis::Array{<:Array{<:Any,1},1})
-    res = Any[]
-    dup = Any[]
+    res = Any[]; dup = Any[]
     for inds in indslis
         for ind in inds
             if ind in dup

@@ -34,6 +34,9 @@ istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     all(ex.args[2:end] .|> x -> istensor(x))
 
+issimpletensorproduct(ex) = false
+issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
+    all(ex.args[2:end] .|> x -> issimpletensor(x))
 
 
 function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
@@ -55,6 +58,32 @@ function toheadlhsrhs(ex::Expr)
         ex.args[1],ex.args[3],ex.args[2]
     else
         error("parse error")
+    end
+end
+
+function nonduplicateindex(indslis::Array{<:Array{<:Any,1},1})
+    res = Any[]
+    dup = Any[]
+    for inds in indslis
+        for ind in inds
+            if ind in dup
+                error("same index appears more than two times")
+            elseif ind in res
+                filter!(x->x!=ind,res)
+                push!(dup,ind)
+            else
+                push!(res,ind)
+            end
+        end
+    end
+    res,dup
+end
+function nonduplicateindex(ex::Expr)
+    if issimpletensorproduct(ex)
+        indslis = [i.args[2:end] for i in ex.args[2:end]]
+        nonduplicateindex(indslis)
+    else
+        error("ex should be product of tensors")
     end
 end
 
@@ -109,25 +138,7 @@ function parsetensorproduct(ex,contractor=tensorcontract)
     end
 end
 
-function nonduplicateindex(indslis)
-    res_ = [indslis[1]...]
-    res = eltype(res_)[]
-    for i in res_
-        if !(i in res)
-            push!(res,i)
-        end
-    end
-    for inds in indslis[2:end]
-        for ind in inds
-            if ind in res
-                filter!(x->x!=ind,res)
-            else
-                push!(res,ind)
-            end
-        end
-    end
-    res
-end
+
 
 haveduplicatedindex(inds) = (inds|>Set|>length) != (inds|>length)
 

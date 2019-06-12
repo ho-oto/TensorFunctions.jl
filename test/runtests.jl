@@ -61,4 +61,7 @@ using Test
     @test TensorFunctions.istensorproduct(:( A[:a,:b] * B[:b,:c] * C[(:c,:d)] )) == true
     @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c]) * C[(:c,:d)] )) == false
     @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c])[:a,:c] * C[(:c,:d)] )) == true
+
+
+
 end

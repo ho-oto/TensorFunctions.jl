@@ -4,6 +4,7 @@ using LinearAlgebra,TensorOperations
 
 export @tensorfunc#,@tensormap
 
+#= Bool functions =#
 issymbol(ex) = typeof(ex) == QuoteNode
 
 isinpairedindex(ex,inrhs::Bool=true) = false
@@ -37,8 +38,9 @@ istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
 issimpletensorproduct(ex) = false
 issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     all(ex.args[2:end] .|> x -> issimpletensor(x))
+#= end Bool functions =#
 
-
+#= elementary functions for parser =#
 function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
     if     ex.head == :vect ; nothing,ex.args
     elseif ex.head == :ref  ; ex.args[1],ex.args[2:end]
@@ -61,7 +63,7 @@ function toheadlhsrhs(ex::Expr)
     end
 end
 
-function nonduplicateindex(indslis::Array{<:Array{<:Any,1},1})
+function duplicateindex(indslis::Array{<:Array{<:Any,1},1})
     res = Any[]
     dup = Any[]
     for inds in indslis
@@ -78,15 +80,15 @@ function nonduplicateindex(indslis::Array{<:Array{<:Any,1},1})
     end
     res,dup
 end
-function nonduplicateindex(ex::Expr)
+function duplicateindex(ex::Expr)
     if issimpletensorproduct(ex)
         indslis = [i.args[2:end] for i in ex.args[2:end]]
-        nonduplicateindex(indslis)
+        duplicateindex(indslis)
     else
         error("ex should be product of tensors")
     end
 end
-
+#= elementary functions for parse =#
 
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
     if istensorproduct(ex)
@@ -115,6 +117,48 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
     end
 end
 
+function taketrace(ex::Expr,tracefunc=tensortrace)
+    if istensorproduct(ex)
+        exx = copy(ex)
+        for i in 2:length(ex.args)
+            exx.args[i] = taketrace(ex.args[i])
+        end
+        exx
+    elseif istensor(ex)
+        tname,tind = tonameindex(ex)
+        if haveduplicatedindex([tind])
+            newtind = nonduplicateindex([tind])
+            :($tracefunc($tname,$tind,$newtind)$newtind)
+        else
+            ex
+        end
+
+    end
+end
+
+function makepairwised(ex::Expr,contractorder)
+    if ex.head != :call || ex.args[1] != :*
+        error("parse error")
+    elseif length(ex.args) == 3 #2コの積
+        ex
+    else
+        # 露出しているindexの中で一若いのをペアにして全体を自分に食わせる
+        exx = copy(ex)
+        indslis = [i.args[2:end] for i in ex.args[2:end]]
+        tmp = Int[]
+        for j in contractorder
+            for k in 1:length(indslis)
+                if j in indslis[k]; push!(tmp,k); end
+            end
+            if length(tmp) == 2; break; end
+        end
+        filter!(x->!(x in tmp),exx.args[2:end])
+        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),nonduplicateindex()...))
+        makepairwised(exx)
+    end
+end
+
+
 function parsetensorproduct(ex,contractor=tensorcontract)
     #TODO: use TensorOperator.contract_indices at compile time
     if !istensor(ex)
@@ -139,49 +183,6 @@ function parsetensorproduct(ex,contractor=tensorcontract)
 end
 
 
-
-haveduplicatedindex(inds) = (inds|>Set|>length) != (inds|>length)
-
-function makepairwised(ex::Expr,contractorder)
-    if ex.head != :call || ex.args[1] != :*
-        error("parse error")
-    elseif length(ex.args) == 3 #2コの積
-        ex
-    else
-        # 露出しているindexの中で一若いのをペアにして全体を自分に食わせる
-        exx = copy(ex)
-        indslis = [i.args[2:end] for i in ex.args[2:end]]
-        tmp = Int[]
-        for j in contractorder
-            for k in 1:length(indslis)
-                if j in indslis[k]; push!(tmp,k); end
-            end
-            if length(tmp) == 2; break; end
-        end
-        filter!(x->!(x in tmp),exx.args[2:end])
-        push!(exx.args,Expr(:ref,Expr(:call,:*,ex.args[],ex.args[]),nonduplicateindex()...))
-        makepairwised(exx)
-    end
-end
-
-function taketrace(ex::Expr,tracefunc=tensortrace)
-    if istensorproduct(ex)
-        exx = copy(ex)
-        for i in 2:length(ex.args)
-            exx.args[i] = taketrace(ex.args[i])
-        end
-        exx
-    elseif istensor(ex)
-        tname,tind = tonameindex(ex)
-        if haveduplicatedindex([tind])
-            newtind = nonduplicateindex([tind])
-            :($tracefunc($tname,$tind,$newtind)$newtind)
-        else
-            ex
-        end
-
-    end
-end
 
 function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
     # reshapeの必要なtensorをリストアップする : 0コなら何もしない

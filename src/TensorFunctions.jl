@@ -168,10 +168,10 @@ function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr,Nothing}})
         end
         exx
     elseif istensor(ex)
-        # (hoge)[:a,:b,(:c,:d),:e*5] -> reshape(trace(hoge))[:a,:b,:c,:d,:e]
-        # TODO:
         if !istensor(ex)
             error("not tensor")
+        elseif issimpletensor(ex)
+            ex
         else
             tensorname = ex.args[1]
             indexlist = ex.args[2:end]
@@ -179,10 +179,19 @@ function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr,Nothing}})
             for i in indexlist
                 if issymbol(i)
                     push!(newindexlist,i)
-                else
-
+                elseif ispairedindex(i)
+                    for j in i.args
+                        if typeof(j) == QuoteNode
+                            push!(newindexlist,j)
+                        else
+                            push!(newindexlist,j.args[2])
+                        end
+                    end
+                elseif isindexproduct(i)
+                    push!(newindexlist,toindint(i)[1])
                 end
             end
+            Expr(:ref,Expr(:call,:reshape,tensorname,[arg[i] for i in newindexlist]...),newindexlist...)
         end
     end
 end

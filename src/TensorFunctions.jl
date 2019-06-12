@@ -88,9 +88,10 @@ function duplicateindex(ex::Expr)
         error("ex should be product of tensors")
     end
 end
-#= elementary functions for parse =#
+#= end elementary functions for parse =#
 
-function tosimpletensor(ex,arg::Dict{Symbol,Int})
+# main steps of parse =#
+function tosimpletensor(ex,arg::Dict{Symbol,<:Union{Int,Symbol,Expr}})
     if istensorproduct(ex)
         exx = copy(ex)
         for i in 2:length(ex.args)
@@ -181,7 +182,7 @@ function parsetensorproduct(ex,contractor=tensorcontract)
         :($(ex.args[1]))
     end
 end
-
+#= end main steps of parse =#
 
 
 function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
@@ -191,20 +192,20 @@ function tensorproductmain(ex,contractorder::NTuple{N,Symbol} where N)
     # ()の中で不明なのが残っていれば残りから決める : :d = div(size(D,1),(hoge*huga*piyo))
     # 元のExprから何も考えずに()と*Intを外したものを作る
     # 愚直にreshapeする
-    # TODO: reshape the result
     head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
-    rhs = tosimpletensor(rhs) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
+    arg = bonddimdict(rhs)
+    rhs = tosimpletensor(rhs,arg) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
     rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
     rhs = makepairwised(rhs,contractorder) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
     rhs = Expr(:ref,rhs,tonameindex(lhs)[2]...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
     rhs = parsetensorproduct(rhs)
-    if head == :(<=) || head == :(=>)
-        rhs
-    else
+    # reshape result here
+    if !(head in [:(<=),:(=>)])
         lhs = tonameindex(lhs)[1]
         op = Dict(:(:=) => :(=),:(=) => :(.=),:(+=) => :(.+=),:(-=) => :(.-=))[head]
-        Expr(op,lhs,rhs)
+        rhs = Expr(op,lhs,rhs)
     end
+    rhs
 end
 
 macro tensorfunc(ex::Expr)

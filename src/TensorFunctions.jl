@@ -34,6 +34,31 @@ istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     all(ex.args[2:end] .|> x -> istensor(x))
 
+
+
+function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
+    if     ex.head == :vect ; nothing,ex.args
+    elseif ex.head == :ref  ; ex.args[1],ex.args[2:end]
+    else                    ; error("not tensor")
+    end
+end
+
+function toheadlhsrhs(ex::Expr)
+    if ex.head in [:(=),:(:=),:(+=),:(-=)] && istensor(ex.args[1],false) &&
+        istensorproduct(ex.args[2]) && length(ex.args) == 2
+        ex.head,ex.args[1],ex.args[2]
+    elseif ex.head == :call && ex.args[1] == :(<=) && istensor(ex.args[2],false) &&
+        istensorproduct(ex.args[3]) && length(ex.args) == 3
+        ex.args[1],ex.args[2],ex.args[3]
+    elseif ex.head == :call && ex.args[1] == :(=>) && istensor(ex.args[3],false) &&
+        istensorproduct(ex.args[2]) && length(ex.args) == 3
+        ex.args[1],ex.args[3],ex.args[2]
+    else
+        error("parse error")
+    end
+end
+
+
 function tosimpletensor(ex,arg::Dict{Symbol,Int})
     if istensorproduct(ex)
         exx = copy(ex)
@@ -58,47 +83,6 @@ function tosimpletensor(ex,arg::Dict{Symbol,Int})
                 end
             end
         end
-    end
-end
-
-function tonameindex(ex::Expr) # A[:a,:b] -> :A,[:(:a),:(:b)]
-    if ex.head == :vect
-        nothing,ex.args
-    elseif ex.head == :ref
-        ex.args[1],ex.args[2:end]
-    else
-        error("not tensor")
-    end
-end
-
-
-function toheadlhsrhs(ex::Expr) # hoge = huga -> :=,hoge,huga
-    if length(ex.args) == 2
-        if ex.head in [:(=),:(:=),:(+=),:(-=)]
-            if istensor(ex.args[1],false) && istensorproduct(ex.args[2])
-                return ex.head,ex.args[1],ex.args[2]
-            else
-                error("parse error")
-            end
-        else
-            error("parse error")
-        end
-    elseif length(ex.args) == 3
-        if ex.head == :call && ex.args[1] == :(<=)
-            if istensor(ex.args[2],false) && istensorproduct(ex.args[3])
-                return ex.args[1],ex.args[2],ex.args[3]
-            else
-                error("parse error")
-            end
-        elseif ex.head == :call && ex.args[1] == :(=>)
-            if istensor(ex.args[3],false) && istensorproduct(ex.args[2])
-                return ex.args[1],ex.args[3],ex.args[2]
-            else
-                error("parse error")
-            end
-        end
-    else
-        error("parse error")
     end
 end
 

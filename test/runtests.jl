@@ -55,4 +55,10 @@ using Test
     @test TensorFunctions.issimpletensor(:( [:a,(:b,:c)] )) == false
     @test TensorFunctions.issimpletensor(:( [(:a|4,:b|hoge(3)),:c*6] )) == false
 
+    @test TensorFunctions.istensorproduct(:( A[:a,:b] * B[:b,:c] * C[:c,:d] )) == true
+    @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c]) * C[:c,:d] )) == false
+    @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d] )) == true
+    @test TensorFunctions.istensorproduct(:( A[:a,:b] * B[:b,:c] * C[(:c,:d)] )) == true
+    @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c]) * C[(:c,:d)] )) == false
+    @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c])[:a,:c] * C[(:c,:d)] )) == true
 end

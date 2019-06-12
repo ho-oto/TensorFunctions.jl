@@ -205,13 +205,12 @@ function taketrace(ex::Expr,tracefunc=tensortrace)
         exx
     elseif istensor(ex)
         tname,tind = tonameindex(ex)
-        if haveduplicatedindex([tind])
-            newtind = nonduplicateindex([tind])
+        if length(duplicateindex([tind])[2]) != 0
+            newtind = duplicateindex([tind])[1]
             :($tracefunc($tname,$tind,$newtind)$newtind)
         else
             ex
         end
-
     end
 end
 

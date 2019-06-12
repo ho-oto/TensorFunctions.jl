@@ -62,6 +62,8 @@ using Test
     @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c]) * C[(:c,:d)] )) == false
     @test TensorFunctions.istensorproduct(:( (A[:a,:b] * B[:b,:c])[:a,:c] * C[(:c,:d)] )) == true
 
+    @test TensorFunctions.toindint(:( :a*5 )) == (:(:a),5)
+    @test TensorFunctions.toindint(:( 5*:a )) == (:(:a),5)
 
     # reshapeの必要なtensorをリストアップする : 0コなら何もしない
     # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...

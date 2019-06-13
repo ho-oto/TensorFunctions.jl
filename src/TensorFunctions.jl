@@ -109,33 +109,36 @@ function bonddimdict(ex::Expr)
     resdict = Dict{QuoteNode,T where T <:Union{Int,Symbol,Expr,Nothing}}()
     pairedindexlis = []
     pairedindexlistot = []
-    for tens in ex.args[2:end]
-        pos = posorig = 1
-        for ind in tens.args[2:end]
+    for t in ex.args[2:end]
+        posreshaped = posoriginal = 1
+        for ind in t.args[2:end]
             if issymbol(ind)
-                resdict[ind] = :(size($(tens.args[1]),$pos))
-                pos += 1; posorig += 1
+                resdict[ind] = :(size($(t.args[1]),$posoriginal))
+                posreshaped += 1
+                posoriginal += 1
             elseif ispairedindex(ind)
-                tmp = []
-                for indd in ind.args
-                    if typeof(indd) == Expr
-                        resdict[indd.args[2]] = indd.args[3]
-                    elseif typeof(indd) == QuoteNode && !haskey(resdict,indd)
-                        resdict[indd] = nothing
+                tmppairedindex = []
+                for i in ind.args
+                    if typeof(i) == Expr
+                        resdict[i.args[2]] = i.args[3]
+                        push!(tmppairedindex,i.args[2])
+                    elseif typeof(i) == QuoteNode && !haskey(resdict,i)
+                        resdict[i] = nothing
+                        push!(tmppairedindex,i)
                     end
-                    pos += 1
-                    push!(tmp,indd)
                 end
-                push!(pairedindexlis,tmp)
-                push!(pairedindexlistot,:(size($(tens.args[1]),$posorig)))
-                posorig += 1
+                push!(pairedindexlis,tmppairedindex)
+                push!(pairedindexlistot,:(size($(t.args[1]),$posoriginal)))
+                posreshaped += length(ind.args)
+                posoriginal += 1
             elseif isindexproduct(ind)
-                indname,posshift=toindint(ind)
-                resdict[indname] = :(size($(tens.args[1]))[$pos:$pos+$posshift-1]|>prod)
-                pos += posshift
-                posorig += posshift
+                indname,posshift = toindint(ind)
+                resdict[indname] =
+                    :(size($(t.args[1]))[$posoriginal:$posoriginal+$posshift-1]|>prod)
+                posreshaped += 1
+                posoriginal += posshift
             else
-                error("cannot parse")
+                error("not index,pairedindex,int*index")
             end
         end
     end

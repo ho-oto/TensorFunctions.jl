@@ -156,40 +156,42 @@ function bonddimdict(ex::Expr)
     resdict
 end
 
-function tosimpletensor(ex,arg::Dict{QuoteNode,<:Any})
-    if istensorproduct(ex)
-        exx = copy(ex)
-        for i in 2:length(ex.args)
-            exx.args[i] = tosimpletensor(ex.args[i],arg)
-        end
-        exx
-    elseif istensor(ex)
-        if !istensor(ex)
-            error("not tensor")
-        elseif issimpletensor(ex)
-            ex
-        else
-            tensorname = ex.args[1]
-            indexlist = ex.args[2:end]
-            newindexlist = QuoteNode[]
-            for i in indexlist
-                if issymbol(i)
-                    push!(newindexlist,i)
-                elseif ispairedindex(i)
-                    for j in i.args
-                        if typeof(j) == QuoteNode
-                            push!(newindexlist,j)
-                        else
-                            push!(newindexlist,j.args[2])
-                        end
-                    end
-                elseif isindexproduct(i)
-                    push!(newindexlist,toindint(i)[1])
+function tosimpletensor!(ex,bddict::Dict{QuoteNode,<:Any})
+    if !istensorproduct(ex)
+        error("not tensorproduct")
+    end
+    ex.args[2:end] .= map(x->tosimpletensor(x,bddict),ex.args[2:end])
+end
+
+function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
+    if !istensor(ex)
+        error("not tensor")
+    end
+    if issimpletensor(ex)
+        return ex
+    end
+    tnameout = Expr(:call,:reshape,ex.args[1])
+    exout = Expr(:ref,tnameout)
+    for i in ex.args[2:end]
+        if issymbol(i)
+            push!(tnameout.args,bddict[i])
+            push!(exout.args,i)
+        elseif isindexproduct(i)
+            push!(tnameout.args,bddict[toindint(i)[1]])
+            push!(exout.args,toindint(i)[1])
+        elseif ispairedindex(i)
+            for j in i.args
+                if typeof(j) == QuoteNode
+                    push!(tnameout.args,bddict[j])
+                    push!(exout.args,j)
+                else
+                    push!(tnameout.args,bddict[j.args[2]])
+                    push!(exout.args,j.args[2])
                 end
             end
-            Expr(:ref,Expr(:call,:reshape,tensorname,[arg[i] for i in newindexlist]...),newindexlist...)
         end
     end
+    exout
 end
 
 function taketrace(ex::Expr,tracefunc=tensortrace)
@@ -267,8 +269,7 @@ end
 
 function tensorproductmain(ex,ord)
     head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
-    arg = bonddimdict(rhs)
-    rhs = tosimpletensor(rhs,arg) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
+    tosimpletensor!(rhs,bonddimdict(rhs)) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
     rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
     rhs = makepairwised(rhs,order(ord)) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
     rhs = Expr(:ref,rhs,toindex(lhs)...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]

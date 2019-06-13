@@ -304,4 +304,12 @@ function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=t
     end
     rhs
 end
+
+macro tensorfunc(ord::Expr,ex::Expr)
+    esc(tensorproductmain(ex,ord))
+end
+
+macro tensorfunc(ex::Expr)
+    esc(tensorproductmain(ex,:((nothing,))))
+end
 #= end main routine =#

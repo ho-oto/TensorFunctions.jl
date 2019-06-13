@@ -5,12 +5,12 @@ function tensormapmain(ex,ord;order=order,ishermitian=false,tracefunc=tensortrac
         error("cannot convert to map")
     end
     mapindsl,mapindsr = lhs |> toindex
-    if mapindsr.head == :tuple
+    if typeof(mapindsr) != QuoteNode
         mapdimr = Expr(:*,map(x->bdims[x],mapindsr.args)...)
     else
         mapdimr = bdims[mapindsr]
     end
-    if mapindsl.head == :tuple
+    if typeof(mapindsl) != QuoteNode
         mapdiml = Expr(:*,map(x->bdims[x],mapindsl.args)...)
     else
         mapdiml = bdims[mapindsl]
@@ -20,28 +20,28 @@ function tensormapmain(ex,ord;order=order,ishermitian=false,tracefunc=tensortrac
     tfroml = Expr(:ref,tnamefroml,mapindsl)
     fnamefromr,fnamefroml = gensym(),gensym()
     exfromr,exfroml = copy(rhs),copy(rhs)
-    push!(exfromr,tfromr)
-    push!(exfroml,tfroml)
+    push!(exfromr.args,tfromr)
+    push!(exfroml.args,tfroml)
     typeofmap = Expr(:call,promote_type,
         Expr(:.,:eltype,
-            Expr(:tuple,
-                Expr(:vect,toname.(rhs.args[2:end])...)
+            Expr(:tuple,toname.(rhs.args[2:end])...
             )
         )
     )
-    funcfroml =
-        tensorproductmain(exfroml,ord,order=order,tracefunc=tracefunc,contractor=contractor)
+    exfromr,exfroml = Expr(:call,:(<=),lhs,exfromr),Expr(:call,:(<=),lhs,exfroml)
     funcfromr =
         tensorproductmain(exfromr,ord,order=order,tracefunc=tracefunc,contractor=contractor)
+    funcfroml =
+        tensorproductmain(exfroml,ord,order=order,tracefunc=tracefunc,contractor=contractor)
     if ishermitian
         return quote
-            $fnamefroml($tnamefroml) = $funcfroml
-            LinearMap{$typeofmap}($fnamefromr,$fnamefroml,$mapdiml,ishermitian=true)
+            $fnamefromr($tnamefromr) = $funcfromr
+            LinearMap{$typeofmap}($fnamefromr,$mapdimr,ishermitian=true)
         end
     else
         return quote
-            $fnamefroml($tnamefroml) = $funcfroml
             $fnamefromr($tnamefromr) = $funcfromr
+            $fnamefroml($tnamefroml) = $funcfroml
             LinearMap{$typeofmap}($fnamefromr,$fnamefroml,$mapdimr,$mapdiml)
         end
     end

@@ -68,11 +68,5 @@ using Test
     @test TensorFunctions.toname(:( A[5*:a,:c,(:d,:e)] )) == :A
     @test TensorFunctions.toindex(:( A[:a,:c,:d,:e] )) == [:(:a),:(:c),:(:d),:(:e)]
     @test TensorFunctions.toindex(:( [:a,:c,:d,:e] )) == [:(:a),:(:c),:(:d),:(:e)]
-    # reshapeの必要なtensorをリストアップする : 0コなら何もしない
-    # 露出しているindexをリスト化する : :a=>size(A,1),:b=>size(B,2),:c=>prod(size(C)[[2,3,4]]),...
-    # 明示的に決まっているやつをリストに足す
-    # ()の中で不明なのが残っていれば残りから決める : :d = div(size(D,1),(hoge*huga*piyo))
-    # 元のExprから何も考えずに()と*Intを外したものを作る
-    # 愚直にreshapeする
 
 end

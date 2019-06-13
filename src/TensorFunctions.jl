@@ -273,13 +273,13 @@ function parsetensorproduct(ex,contractor=tensorcontract)
 end
 #= end main steps of parse =#
 
-
+#= main routine =#
 function tensorproductmain(ex,ord)
-    head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
-    tosimpletensor!(rhs,bonddimdict(rhs)) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
-    taketrace!(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
-    rhs = makepairwised(rhs,order(ord)) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
-    rhs = Expr(:ref,rhs,toindex(lhs)...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
+    head,lhs,rhs = toheadlhsrhs(ex)
+    tosimpletensor!(rhs,bonddimdict(rhs))
+    taketrace!(rhs)
+    rhs = makepairwised(rhs,order(ord))
+    rhs = Expr(:ref,rhs,toindex(lhs)...)
     rhs = parsetensorproduct(rhs)
     # reshape result here
     if !(head in [:(<=),:(=>)])
@@ -293,7 +293,7 @@ end
 macro tensorfunc(ex::Expr)
     esc(tensorproductmain(ex))
 end
-
+#= end main routine =#
 
 #= TODO: implement
 function tensormapmain(ex::Expr)

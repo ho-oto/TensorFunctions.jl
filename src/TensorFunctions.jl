@@ -211,7 +211,7 @@ function taketrace(ex::Expr,tracefunc)
     end
 end
 
-function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
+function makepairwised(ex::Expr,ord)
     if !issimpletensorproduct(ex)
         error("input is not tensor producr")
     end
@@ -275,10 +275,18 @@ function toindreshape(indslis,bdims)
     end
     resultindex,resultshape
 end
+
+function order(ex::Expr)
+    if ex.head == :tuple
+        ex.args
+    else
+        error("not implemented")
+    end
+end
 #= end main steps of parse =#
 
 #= main routine =#
-function tensorproductmain(ex,ord;order=x->x,tracefunc=tensortrace,contractor=tensorcontract)
+function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=tensorcontract)
     head,lhs,rhs = toheadlhsrhs(ex)
     bdims = bonddimdict(rhs)
     tosimpletensor!(rhs,bdims)
@@ -298,8 +306,8 @@ function tensorproductmain(ex,ord;order=x->x,tracefunc=tensortrace,contractor=te
     rhs
 end
 
-macro tensorfunc(ex::Expr)
-    esc(tensorproductmain(ex))
+macro tensorfunc(ex::Expr,ord)
+    esc(tensorproductmain(ex,ord))
 end
 
 function tensormapmain(ex::Expr)

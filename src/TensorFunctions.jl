@@ -2,7 +2,7 @@ module TensorFunctions
 
 using LinearAlgebra,TensorOperations,LinearMaps
 
-export @tensorfunc#,@tensormap
+export @tensorfunc#,@tensormap TODO:
 
 #= Bool functions =#
 issymbol(ex) = typeof(ex) == QuoteNode
@@ -309,22 +309,6 @@ function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=t
         rhs = Expr(op,lhs,rhs)
     end
     rhs
-end
-
-macro tensorfunc(ord::Expr,ex::Expr)
-    esc(tensorproductmain(ex,ord))
-end
-
-macro tensorfunc(ex::Expr)
-    esc(tensorproductmain(ex,:((nothing,))))
-end
-
-function tensormapmain(ex::Expr)
-    ex
-end
-
-macro tensormap(ex::Expr)
-    esc(tensormapmain(ex))
 end
 #= end main routine =#
 

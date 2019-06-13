@@ -144,7 +144,9 @@ function bonddimdict(ex::Expr)
         for j in filter(x->(i in x),keys(pairedinddict))
             if count(x->resdict[x]==nothing,j) == 1
                 denom =
-                Expr(:call,:prod,map(x->resdict[x],filter(x->resdict[x]!=nothing,j))...)
+                Expr(:call,:prod,
+                    Expr(:vect,map(x->resdict[x],filter(x->resdict[x]!=nothing,j))...)
+                    )
                 resdict[i] = Expr(:call,:div,pairedinddict[j],denom)
                 break
             end
@@ -270,7 +272,10 @@ function toindreshape(indslis,bdims)
             push!(resultshape,bdims[i])
         else
             append!(resultindex,i.args)
-            push!(resultshape,Expr(:call,:prod,map(x->bdims[x],i.args)...))
+            push!(resultshape,Expr(:call,:prod,
+                Expr(:vect,map(x->bdims[x],i.args)...)
+                )
+            )
         end
     end
     resultindex,resultshape
@@ -306,8 +311,12 @@ function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=t
     rhs
 end
 
-macro tensorfunc(ex::Expr,ord)
+macro tensorfunc(ord::Expr,ex::Expr)
     esc(tensorproductmain(ex,ord))
+end
+
+macro tensorfunc(ex::Expr)
+    esc(tensorproductmain(ex,:((nothing,))))
 end
 
 function tensormapmain(ex::Expr)

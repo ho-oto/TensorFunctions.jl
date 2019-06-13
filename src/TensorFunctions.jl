@@ -224,7 +224,7 @@ function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
         return ex
     end
     indslis = [i.args[2:end] for i in ex.args[2:end]]
-    nondup,dup = duplicateindex(indslis)
+    nodup,dup = duplicateindex(indslis)
     tmp = nothing
     for i in ord
         if i in dup

@@ -194,21 +194,20 @@ function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
     exout
 end
 
-function taketrace(ex::Expr,tracefunc=tensortrace)
-    if istensorproduct(ex)
-        exx = copy(ex)
-        for i in 2:length(ex.args)
-            exx.args[i] = taketrace(ex.args[i])
-        end
-        exx
-    elseif istensor(ex)
-        tname,tind = toname(ex),toindex(ex)
-        if length(duplicateindex([tind])[2]) != 0
-            newtind = duplicateindex([tind])[1]
-            :($tracefunc($tname,$tind,$newtind)$newtind)
-        else
-            ex
-        end
+function taketrace!(ex::Expr,tracefunc=tensortrace)
+    ex.args[2:end] .= map(x->taketrace(x,tracefunc),ex.args[2:end])
+end
+
+function taketrace(ex::Expr,tracefunc)
+    if !istensor(ex)
+        error("not tensor")
+    end
+    tname,tind = toname(ex),toindex(ex)
+    if length(duplicateindex([tind])[2]) == 0
+        ex
+    else
+        newtind = duplicateindex([tind])[1]
+        Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
 
@@ -270,7 +269,7 @@ end
 function tensorproductmain(ex,ord)
     head,lhs,rhs = toheadlhsrhs(ex) # rhs = A[:a,:b] * B[(:b,:c|hoge)] * C[(:c,:d),:e,:e]
     tosimpletensor!(rhs,bonddimdict(rhs)) # A[:a,:b] * reshape(B)[:b,:c] * reshape(C)[:c,:d,:e,:e]
-    rhs = taketrace(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
+    taketrace!(rhs) # A[:a,:b] * reshape(B)[:b,:c] * trace(reshape(C))[:c,:d]
     rhs = makepairwised(rhs,order(ord)) # (A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d]
     rhs = Expr(:ref,rhs,toindex(lhs)...) # ((A[:a,:b] * B[:b,:c])[:a,:c] * C[:c,:d])[:d,:a]
     rhs = parsetensorproduct(rhs)

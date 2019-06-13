@@ -1,6 +1,6 @@
 module TensorFunctions
 
-using LinearAlgebra,TensorOperations
+using LinearAlgebra,TensorOperations,LinearMaps
 
 export @tensorfunc#,@tensormap
 
@@ -194,7 +194,7 @@ function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
     exout
 end
 
-function taketrace!(ex::Expr,tracefunc=tensortrace)
+function taketrace!(ex::Expr,tracefunc)
     ex.args[2:end] .= map(x->taketrace(x,tracefunc),ex.args[2:end])
 end
 
@@ -245,7 +245,7 @@ function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
     makepairwised(exout,ord)
 end
 
-function parsetensorproduct(ex,contractor=tensorcontract)
+function parsetensorproduct(ex,contractor)
     if !istensor(ex)
         error("ex should be tensor")
     elseif istensorproduct(ex.args[1])
@@ -269,14 +269,18 @@ end
 #= end main steps of parse =#
 
 #= main routine =#
-function tensorproductmain(ex,ord)
+function tensorproductmain(ex,ord;order=x->x,tracefunc=tensortrace,contractor=tensorcontract)
     head,lhs,rhs = toheadlhsrhs(ex)
-    tosimpletensor!(rhs,bonddimdict(rhs))
-    taketrace!(rhs)
-    rhs = makepairwised(rhs,order(ord))
-    rhs = Expr(:ref,rhs,toindex(lhs)...)
-    rhs = parsetensorproduct(rhs)
-    # reshape result here
+    bdims = bonddimdict(rhs)
+    tosimpletensor!(rhs,bdims)
+    taketrace!(rhs,tracefunc)
+    rhs = makepairwised(rhs,ord|>order)
+    lhsind,lhsreshape = toindreshape(lhs|>toindex,bdims)
+    rhs = Expr(:ref,rhs,lhsind...)
+    rhs = parsetensorproduct(rhs,contractor)
+    if lhsreshape != nothing
+        rhs = Expr(:call,:reshape,rhs,lhsreshape...)
+    end
     if !(head in [:(<=),:(=>)])
         lhs = toname(lhs)
         op = Dict(:(:=) => :(=),:(=) => :(.=),:(+=) => :(.+=),:(-=) => :(.-=))[head]

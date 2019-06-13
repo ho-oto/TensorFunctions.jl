@@ -310,6 +310,7 @@ macro tensorfunc(ord::Expr,ex::Expr)
 end
 
 macro tensorfunc(ex::Expr)
-    esc(tensorproductmain(ex,:((nothing,))))
+    dummy = Expr(:tuple,:nothing)
+    esc(tensorproductmain(ex,dummy))
 end
 #= end main routine =#

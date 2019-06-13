@@ -249,19 +249,13 @@ function parsetensorproduct(ex,contractor)
     if !istensor(ex)
         error("ex should be tensor")
     elseif istensorproduct(ex.args[1])
-        lhs = gensym()
-        rhs = gensym()
-        lhs2 = parsetensorproduct(ex.args[1].args[2])
-        rhs2 = parsetensorproduct(ex.args[1].args[3])
-        return quote
-            $lhs = $lhs2
-            $rhs = $rhs2
-            $contractor($lhs,
-                $(ex.args[1].args[2].args[2:end]|>Tuple),
-                $rhs,
-                $(ex.args[1].args[3].args[2:end]|>Tuple),
-                $(ex.args[2:end]|>Tuple))
-        end
+        l = parsetensorproduct(ex.args[1].args[2],contractor)
+        r = parsetensorproduct(ex.args[1].args[3],contractor)
+        return :($contractor($l,
+            $(ex.args[1].args[2].args[2:end]|>Tuple),
+            $r,
+            $(ex.args[1].args[3].args[2:end]|>Tuple),
+            $(ex.args[2:end]|>Tuple)))
     else
         :($(ex.args[1]))
     end
@@ -292,9 +286,7 @@ end
 macro tensorfunc(ex::Expr)
     esc(tensorproductmain(ex))
 end
-#= end main routine =#
 
-#= TODO: implement
 function tensormapmain(ex::Expr)
     ex
 end
@@ -302,6 +294,6 @@ end
 macro tensormap(ex::Expr)
     esc(tensormapmain(ex))
 end
-=#
+#= end main routine =#
 
 end # module

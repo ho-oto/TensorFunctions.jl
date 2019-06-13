@@ -211,11 +211,6 @@ function taketrace(ex::Expr,tracefunc)
     end
 end
 
-order(ord) = error("not supported now")
-function order(ord::NTuple{N,Symbol} where N)
-    ord
-end
-
 function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
     if !issimpletensorproduct(ex)
         error("input is not tensor producr")

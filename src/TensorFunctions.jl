@@ -62,7 +62,7 @@ function toname(ex::Expr)
 end
 
 function toindex(ex::Expr)
-    if !issimpletensor(ex,true) && !issimpletensor(ex,false)
+    if !istensor(ex,true) && !istensor(ex,false)
         error("not tensor")
     end
     (ex.head == :ref) ? ex.args[2:end] : ex.args
@@ -259,6 +259,21 @@ function parsetensorproduct(ex,contractor)
     else
         :($(ex.args[1]))
     end
+end
+
+function toindreshape(indslis,bdims)
+    resultindex = []
+    resultshape = []
+    for i in indslis
+        if issymbol(i)
+            push!(resultindex,i)
+            push!(resultshape,bdims[i])
+        else
+            append!(resultindex,i.args)
+            push!(resultshape,Expr(:call,:prod,map(x->bdims[x],i.args)...))
+        end
+    end
+    resultindex,resultshape
 end
 #= end main steps of parse =#
 

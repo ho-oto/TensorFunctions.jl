@@ -225,24 +225,32 @@ function makepairwised(ex::Expr,ord::NTuple{N,QuoteNode} where N)
     end
     indslis = [i.args[2:end] for i in ex.args[2:end]]
     nodup,dup = duplicateindex(indslis)
-    tmp = nothing
-    for i in ord
-        if i in dup
-            tmp = i
-            break
+    contracttensor = Int[]
+    if length(dup) == 0
+        push!(contracttensor,2,3)
+    else
+        contractind = nothing
+        for i in ord
+            if i in dup
+                contractind = i
+                break
+            end
+        end
+        if contractind != nothing
+            append!(contracttensor,
+                filter(x->(contractind in ex.args[x].args[2:end]),2:length(ex.args)))
+        else
+            push!(contracttensor,2,3)
         end
     end
-    tmptmp = filter(x->(tmp in x.args[2:end]),ex.args[2:end])
-    newcommonind,dst = duplicateindex([i.args[2:end] for i in tmptmp])
-    argss = filter(x->!(tmp in x.args[2:end]),ex.args[2:end])
-    exx = Expr(:call,:*,argss...)
-    push!(exx.args,Expr(:ref,Expr(:call,:*,tmptmp...),newcommonind...))
-    makepairwised(exx,ord)
+    newind,dst = duplicateindex([i.args[2:end] for i in ex.args[contracttensor]])
+    exout = Expr(:call,:*,
+        map(i->ex.args[i],filter(x->!(x in contracttensor),2:length(ex.args)))...)
+    push!(exout.args,Expr(:ref,Expr(:call,:*,ex.args[contracttensor]...),newind...))
+    makepairwised(exout,ord)
 end
 
-
 function parsetensorproduct(ex,contractor=tensorcontract)
-    #TODO: use TensorOperator.contract_indices at compile time
     if !istensor(ex)
         error("ex should be tensor")
     elseif istensorproduct(ex.args[1])

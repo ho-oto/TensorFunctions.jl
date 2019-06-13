@@ -106,9 +106,8 @@ function bonddimdict(ex::Expr)
     if !istensorproduct(ex)
         error("not tensorproduct")
     end
-    resdict = Dict{QuoteNode,T where T <:Union{Int,Symbol,Expr,Nothing}}()
-    pairedindexlis = []
-    pairedindexlistot = []
+    resdict = Dict{QuoteNode,Union{Int,Symbol,Expr,Nothing}}()
+    pairedinddict = Dict{Array{QuoteNode,1},Expr}()
     for t in ex.args[2:end]
         posreshaped = posoriginal = 1
         for ind in t.args[2:end]
@@ -117,18 +116,17 @@ function bonddimdict(ex::Expr)
                 posreshaped += 1
                 posoriginal += 1
             elseif ispairedindex(ind)
-                tmppairedindex = []
+                pairedind = QuoteNode[]
                 for i in ind.args
                     if typeof(i) == Expr
                         resdict[i.args[2]] = i.args[3]
-                        push!(tmppairedindex,i.args[2])
+                        push!(pairedind,i.args[2])
                     elseif typeof(i) == QuoteNode && !haskey(resdict,i)
                         resdict[i] = nothing
-                        push!(tmppairedindex,i)
+                        push!(pairedind,i)
                     end
                 end
-                push!(pairedindexlis,tmppairedindex)
-                push!(pairedindexlistot,:(size($(t.args[1]),$posoriginal)))
+                pairedinddict[pairedind] = :(size($(t.args[1]),$posoriginal))
                 posreshaped += length(ind.args)
                 posoriginal += 1
             elseif isindexproduct(ind)
@@ -143,20 +141,16 @@ function bonddimdict(ex::Expr)
         end
     end
     for i in filter(x->resdict[x]==nothing,keys(resdict))
-        tmp = []
-        tmptmp = []
-        for j in 1:length(pairedindexlis)
-            if i in pairedindexlis[j]
-                push!(tmp,pairedindexlis[j])
-                push!(tmptmp,pairedindexlistot[j])
-            end
-        end
-        for j in 1:length(tmp)
-            if count(x->resdict[x]==nothing, tmp[j]) == 1
-                denomi = Expr(:call,:prod,map(x->resdict[x],filter(x->resdict[x]!=nothing,tmp[j]))...)
-                resdict[i] = :(div($(pairedindexlistot[j]),$denomi))
+        for j in filter(x->(i in x),keys(pairedinddict))
+            if count(x->resdict[x]==nothing,j) == 1
+                denom =
+                Expr(:call,:prod,map(x->resdict[x],filter(x->resdict[x]!=nothing,j))...)
+                resdict[i] = Expr(:call,:div,pairedinddict[j],denom)
                 break
             end
+        end
+        if resdict[i] == nothing
+            error("cannot determine the dim")
         end
     end
     resdict

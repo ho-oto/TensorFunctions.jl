@@ -233,6 +233,10 @@ function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Array{Nothing,
     rhs
 end
 
+"""
+    @tensorfunc(optex, block)
+    @tensorfunc(block)
+"""
 macro tensorfunc(ord::Expr,ex::Expr)
     esc(tensorproductmain(ex,order(ex,ord)))
 end

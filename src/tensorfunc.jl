@@ -41,7 +41,7 @@ function indint(ex::Expr)
     end
 end
 
-function dupinds(indslis::Array{Array{QuoteNode,1},1})
+function dupinds(indslis)
     nodup = QuoteNode[]
     dup = QuoteNode[]
     for inds in indslis
@@ -58,7 +58,6 @@ function dupinds(indslis::Array{Array{QuoteNode,1},1})
     end
     nodup,dup
 end
-dupinds(indslis::Array{QuoteNode,1}) = dupinds([indslis])
 
 # main steps =#
 function headlhsrhs(ex::Expr)
@@ -158,10 +157,10 @@ function taketrace!(ex::Expr)
 end
 function _taketrace(ex::Expr)
     tname,tind = ex.args[1],ex.args[2:end]
-    if length(dupinds(QuoteNode.(tind))[2]) == 0
+    if length(dupinds([tind])[2]) == 0
         ex
     else
-        newtind = dupinds(QuoteNode.(tind))[1]
+        newtind = dupinds([tind])[1]
         Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
@@ -170,7 +169,7 @@ function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Array{Nothing,1}})
     if length(ex.args) == 3
         return ex
     end
-    nodup,dup = dupinds([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
+    nodup,dup = dupinds([i.args[2:end] for i in ex.args[2:end]])
     contracttensor = Int[]
     contractind = nothing
     for i in ord
@@ -185,7 +184,7 @@ function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Array{Nothing,1}})
     else
         push!(contracttensor,2,3)
     end
-    newind,dst = dupinds([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
+    newind,dst = dupinds([i.args[2:end] for i in ex.args[contracttensor]])
     exout = Expr(:call,:*,
         map(i->ex.args[i],filter(x->!(x in contracttensor),2:length(ex.args)))...)
     push!(exout.args,Expr(:ref,Expr(:call,:*,ex.args[contracttensor]...),newind...))

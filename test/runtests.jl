@@ -85,10 +85,10 @@ using TensorOperations
     @test TensorFunctions.issimpletensorproduct(:( (A[:a,:b] * B[:a,(:c,:b)]) * C[:d*1000,:r] )) == false
     @test TensorFunctions.issimpletensorproduct(:( (A[:a,:b] * B[:a,(:c,:b)])[:A,:B] * C[:d,:r] )) == true
 
-    A = randn(3,4,5,6,7,8,3,3); B = randn(4,5,2)
-    @tensor C[a,c,e,f,h] := reshape(A,3, 2,2 ,5 ,6*7, 2,4 ,3*3)[a,b,c,d,e,f,g,h] * B[g,d,b]
+    A = randn(3,4,5,6,7,8,3,3,2,2); B = randn(4,5,2)
+    @tensor C[a,c,e,f,h] := reshape(A,3, 2,2 ,5 ,6*7, 2,4 ,3*3,2,2)[a,b,c,d,e,f,g,h,i,i] * B[g,d,b]
     C = reshape(C,:,size(C)[3:end]...)
-    C2 = @tensorfunc [(:a,:c),:e,:f,:h] <= A[:a,(:b,:c),:d,:e*2,(:f,:g),:h*2] * B[:g,:d,:b]
+    C2 = @tensorfunc [(:a,:c),:e,:f,:h] <= A[:a,(:b,:c),:d,:e*2,(:f,:g),:h*2,:i,:i] * B[:g,:d,:b]
     @test isapprox(C, C2)
 
     A = randn(100); B= randn(5,5)

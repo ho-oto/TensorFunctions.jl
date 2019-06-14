@@ -31,9 +31,8 @@ istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
 issimpletensorproduct(ex) = false
 issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     all(ex.args[2:end] .|> isrhssimpletensor)
-#= end Bool functions =#
 
-#= elementary functions for parser =#
+#= elementary functions to parse the Expr =#
 function toindint(ex::Expr)
     if typeof(ex.args[2]) == QuoteNode
         ex.args[2],ex.args[3]
@@ -60,9 +59,8 @@ function todupind(indslis::Array{Array{QuoteNode,1},1})
     nodup,dup
 end
 todupind(indslis::Array{QuoteNode,1}) = todupind([indslis])
-#= end elementary functions for parse =#
 
-# main steps of parse =#
+# main steps =#
 function headlhsrhs(ex::Expr)
     if ex.head == :call && ex.args[1] == :(<=) && length(ex.args) == 3 &&
         islhstensor(ex.args[2]) && istensorproduct(ex.args[3])
@@ -219,9 +217,8 @@ function toindreshape(indslis,bddict::Dict{QuoteNode,<:Any})
     end
     resultindex,resultshape
 end
-#= end main steps of parse =#
 
-#= main routine =#
+#= definition of macro =#
 function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
     head,lhs,rhs = headlhsrhs(ex)
     bdims = bonddimdict(rhs)
@@ -238,10 +235,9 @@ function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}
 end
 
 macro tensorfunc(ord::Expr,ex::Expr)
-    esc(tensorproductmain(ex,order(ord)))
+    esc(tensorproductmain(ex,order(ex,ord)))
 end
 
 macro tensorfunc(ex::Expr)
-    esc(tensorproductmain(ex,order()))
+    esc(tensorproductmain(ex,order(ex)))
 end
-#= end main routine =#

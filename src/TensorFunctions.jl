@@ -5,19 +5,19 @@ using LinearAlgebra,TensorOperations
 export @tensorfunc
 
 #= global setting =#
-function order(ex::Expr)
-    if ex.head == :tuple
-        QuoteNode[ex.args...]
+function order(ex::Expr,ord::Expr)
+    if ord.head == :tuple
+        QuoteNode[ord.args...]
     else
         error("not implemented")
     end
 end
-function order()
+function order(ex::Expr)
     (nothing,)
 end
+
 tracefunc=tensortrace
 contractfunc=tensorcontract
-#= end global setting =#
 
 include("tensorfunc.jl")
 

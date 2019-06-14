@@ -1,10 +1,9 @@
 module TensorFunctions
 
-using LinearAlgebra,TensorOperations#,LinearMaps
+using LinearAlgebra,TensorOperations
 
-export @tensorfunc#,@tensormap
+export @tensorfunc
 
 include("tensorfunc.jl")
-#include("tensormap.jl")
 
 end # module

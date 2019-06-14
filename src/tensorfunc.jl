@@ -42,26 +42,28 @@ function toindint(ex::Expr)
     end
 end
 
-function duplicateindex(indslis::Array{<:Any,1})
-    nodup = Any[]; dup = Any[]
+function duplicateindex(indslis::Array{Array{QuoteNode,1},1})
+    nodup = QuoteNode[]
+    dup = QuoteNode[]
     for inds in indslis
-        for ind in inds
-            if ind in dup
-                error("same index appears more than two times")
-            elseif ind in nodup
-                filter!(x->x!=ind,nodup)
-                push!(dup,ind)
+        for i in inds
+            if i in dup
+                error(i," appears theree times")
+            elseif i in nodup
+                filter!(x->x!=i,nodup)
+                push!(dup,i)
             else
-                push!(nodup,ind)
+                push!(nodup,i)
             end
         end
     end
     nodup,dup
 end
+duplicateindex(indslis::Array{QuoteNode,1}) = duplicateindex([indslis])
 #= end elementary functions for parse =#
 
 # main steps of parse =#
-function toheadlhsrhs(ex::Expr)
+function headlhsrhs(ex::Expr)
     if ex.head == :call && ex.args[1] == :(<=) && length(ex.args) == 3 &&
         islhstensor(ex.args[2]) && istensorproduct(ex.args[3])
         ex.args[1],ex.args[2],ex.args[3]
@@ -74,9 +76,6 @@ function toheadlhsrhs(ex::Expr)
 end
 
 function bonddimdict(ex::Expr)
-    if !istensorproduct(ex)
-        error("not tensorproduct")
-    end
     resdict = Dict{QuoteNode,Union{Int,Symbol,Expr,Nothing}}()
     pairedinddict = Dict{Array{QuoteNode,1},Expr}()
     for t in ex.args[2:end]
@@ -86,14 +85,16 @@ function bonddimdict(ex::Expr)
                 resdict[ind] = :(size($(t.args[1]),$posoriginal))
                 posreshaped += 1
                 posoriginal += 1
-            elseif ispairedindex(ind)
+            elseif isrhspairedindex(ind)
                 pairedind = QuoteNode[]
                 for i in ind.args
                     if typeof(i) == Expr
                         resdict[i.args[2]] = i.args[3]
                         push!(pairedind,i.args[2])
-                    elseif typeof(i) == QuoteNode && !haskey(resdict,i)
-                        resdict[i] = nothing
+                    elseif typeof(i) == QuoteNode
+                        if !haskey(resdict,i)
+                            resdict[i] = nothing
+                        end
                         push!(pairedind,i)
                     end
                 end
@@ -106,8 +107,6 @@ function bonddimdict(ex::Expr)
                     :(size($(t.args[1]))[$posoriginal:$posoriginal+$posshift-1]|>prod)
                 posreshaped += 1
                 posoriginal += posshift
-            else
-                error("not index,pairedindex,int*index")
             end
         end
     end
@@ -176,10 +175,10 @@ function taketrace(ex::Expr,tracefunc)
         error("not tensor")
     end
     tname,tind = ex.args[1],ex.args[2:end]
-    if length(duplicateindex([tind])[2]) == 0
+    if length(duplicateindex(tind)[2]) == 0
         ex
     else
-        newtind = duplicateindex([tind])[1]
+        newtind = duplicateindex(tind)[1]
         Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
@@ -191,8 +190,7 @@ function makepairwised(ex::Expr,ord)
     if length(ex.args) == 3
         return ex
     end
-    indslis = [i.args[2:end] for i in ex.args[2:end]]
-    nodup,dup = duplicateindex(indslis)
+    nodup,dup = duplicateindex([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
     contracttensor = Int[]
     if length(dup) == 0
         push!(contracttensor,2,3)
@@ -211,7 +209,7 @@ function makepairwised(ex::Expr,ord)
             push!(contracttensor,2,3)
         end
     end
-    newind,dst = duplicateindex([i.args[2:end] for i in ex.args[contracttensor]])
+    newind,dst = duplicateindex([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
     exout = Expr(:call,:*,
         map(i->ex.args[i],filter(x->!(x in contracttensor),2:length(ex.args)))...)
     push!(exout.args,Expr(:ref,Expr(:call,:*,ex.args[contracttensor]...),newind...))
@@ -251,19 +249,11 @@ function toindreshape(indslis,bdims)
     end
     resultindex,resultshape
 end
-
-function order(ex::Expr)
-    if ex.head == :tuple
-        ex.args
-    else
-        error("not implemented")
-    end
-end
 #= end main steps of parse =#
 
 #= main routine =#
 function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=tensorcontract)
-    head,lhs,rhs = toheadlhsrhs(ex)
+    head,lhs,rhs = headlhsrhs(ex)
     bdims = bonddimdict(rhs)
     tosimpletensor!(rhs,bdims)
     taketrace!(rhs,tracefunc)

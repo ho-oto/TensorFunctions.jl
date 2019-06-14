@@ -7,13 +7,16 @@ export @tensorfunc
 #= global setting =#
 function order(ex::Expr)
     if ex.head == :tuple
-        ex.args
+        QuoteNode.(ex.args)
     else
         error("not implemented")
     end
 end
+function order()
+    (nothing,)
+end
 tracefunc=tensortrace
-contractor=tensorcontract
+contractfunc=tensorcontract
 #= end global setting =#
 
 include("tensorfunc.jl")

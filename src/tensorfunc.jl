@@ -42,7 +42,7 @@ function toindint(ex::Expr)
     end
 end
 
-function duplicateindex(indslis::Array{Array{QuoteNode,1},1})
+function todupind(indslis::Array{Array{QuoteNode,1},1})
     nodup = QuoteNode[]
     dup = QuoteNode[]
     for inds in indslis
@@ -59,7 +59,7 @@ function duplicateindex(indslis::Array{Array{QuoteNode,1},1})
     end
     nodup,dup
 end
-duplicateindex(indslis::Array{QuoteNode,1}) = duplicateindex([indslis])
+todupind(indslis::Array{QuoteNode,1}) = todupind([indslis])
 #= end elementary functions for parse =#
 
 # main steps of parse =#
@@ -114,50 +114,39 @@ function bonddimdict(ex::Expr)
         for j in filter(x->(i in x),keys(pairedinddict))
             if count(x->resdict[x]==nothing,j) == 1
                 denom =
-                Expr(:call,:prod,
-                    Expr(:vect,map(x->resdict[x],filter(x->resdict[x]!=nothing,j))...)
-                    )
+                Expr(:call,:*,map(x->resdict[x],filter(x->resdict[x]!=nothing,j))...)
                 resdict[i] = Expr(:call,:div,pairedinddict[j],denom)
                 break
             end
-        end
-        if resdict[i] == nothing
-            error("cannot determine the dim")
+            error("cannot predict the dimension of ",i)
         end
     end
     resdict
 end
 
 function tosimpletensor!(ex,bddict::Dict{QuoteNode,<:Any})
-    if !istensorproduct(ex)
-        error("not tensorproduct")
-    end
-    ex.args[2:end] .= map(x->tosimpletensor(x,bddict),ex.args[2:end])
+    ex.args[2:end] .= map(x->_tosimpletensor(x,bddict),ex.args[2:end])
 end
-
-function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
-    if !istensor(ex)
-        error("not tensor")
-    end
-    if issimpletensor(ex)
+function _tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
+    if isrhssimpletensor(ex)
         return ex
     end
-    tnameout = Expr(:call,:reshape,ex.args[1])
-    exout = Expr(:ref,tnameout)
+    tname = Expr(:call,:reshape,ex.args[1])
+    exout = Expr(:ref,tname)
     for i in ex.args[2:end]
         if isqnode(i)
-            push!(tnameout.args,bddict[i])
+            push!(tname.args,bddict[i])
             push!(exout.args,i)
         elseif isintindexproduct(i)
-            push!(tnameout.args,bddict[toindint(i)[1]])
+            push!(tname.args,bddict[toindint(i)[1]])
             push!(exout.args,toindint(i)[1])
-        elseif ispairedindex(i)
+        elseif isrhspairedindex(i)
             for j in i.args
                 if typeof(j) == QuoteNode
-                    push!(tnameout.args,bddict[j])
+                    push!(tname.args,bddict[j])
                     push!(exout.args,j)
                 else
-                    push!(tnameout.args,bddict[j.args[2]])
+                    push!(tname.args,bddict[j.args[2]])
                     push!(exout.args,j.args[2])
                 end
             end
@@ -166,85 +155,66 @@ function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
     exout
 end
 
-function taketrace!(ex::Expr,tracefunc)
-    ex.args[2:end] .= map(x->taketrace(x,tracefunc),ex.args[2:end])
+function taketrace!(ex::Expr)
+    ex.args[2:end] .= map(_taketrace,ex.args[2:end])
 end
-
-function taketrace(ex::Expr,tracefunc)
-    if !istensor(ex)
-        error("not tensor")
-    end
+function _taketrace(ex::Expr)
     tname,tind = ex.args[1],ex.args[2:end]
-    if length(duplicateindex(tind)[2]) == 0
+    if length(todupind(tind)[2]) == 0
         ex
     else
-        newtind = duplicateindex(tind)[1]
+        newtind = todupind(tind)[1]
         Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
 
-function makepairwised(ex::Expr,ord)
-    if !issimpletensorproduct(ex)
-        error("input is not tensor producr")
-    end
+function makepairwised(ex::Expr,ord::Array{QuoteNode,1})
     if length(ex.args) == 3
         return ex
     end
-    nodup,dup = duplicateindex([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
+    nodup,dup = todupind([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
     contracttensor = Int[]
-    if length(dup) == 0
-        push!(contracttensor,2,3)
-    else
-        contractind = nothing
-        for i in ord
-            if i in dup
-                contractind = i
-                break
-            end
-        end
-        if contractind != nothing
-            append!(contracttensor,
-                filter(x->(contractind in ex.args[x].args[2:end]),2:length(ex.args)))
-        else
-            push!(contracttensor,2,3)
+    contractind = nothing
+    for i in ord
+        if i in dup
+            contractind = i
+            break
         end
     end
-    newind,dst = duplicateindex([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
+    if contractind != nothing
+        append!(contracttensor,
+            filter(x->(contractind in ex.args[x].args[2:end]),2:length(ex.args)))
+    else
+        push!(contracttensor,2,3)
+    end
+    newind,dst = todupind([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
     exout = Expr(:call,:*,
         map(i->ex.args[i],filter(x->!(x in contracttensor),2:length(ex.args)))...)
     push!(exout.args,Expr(:ref,Expr(:call,:*,ex.args[contracttensor]...),newind...))
     makepairwised(exout,ord)
 end
 
-function parsetensorproduct(ex,contractor)
-    if !istensor(ex)
-        error("ex should be tensor")
-    elseif istensorproduct(ex.args[1])
-        l = parsetensorproduct(ex.args[1].args[2],contractor)
-        r = parsetensorproduct(ex.args[1].args[3],contractor)
-        return :($contractor($l,
-            $(ex.args[1].args[2].args[2:end]|>Tuple),
-            $r,
-            $(ex.args[1].args[3].args[2:end]|>Tuple),
-            $(ex.args[2:end]|>Tuple)))
+function parsetensorproduct(ex::Expr)
+    if istensorproduct(ex.args[1])
+        l = parsetensorproduct(ex.args[1].args[2])
+        r = parsetensorproduct(ex.args[1].args[3])
+        :($contractfunc($l,$(ex.args[1].args[2].args[2:end]|>Tuple),
+            $r,$(ex.args[1].args[3].args[2:end]|>Tuple),$(ex.args[2:end]|>Tuple)))
     else
         :($(ex.args[1]))
     end
 end
 
-function toindreshape(indslis,bdims)
+function toindreshape(indslis,bddict::Dict{QuoteNode,<:Any})
     resultindex = []
     resultshape = []
     for i in indslis
         if isqnode(i)
             push!(resultindex,i)
-            push!(resultshape,bdims[i])
+            push!(resultshape,bddict[i])
         else
             append!(resultindex,i.args)
-            push!(resultshape,Expr(:call,:prod,
-                Expr(:vect,map(x->bdims[x],i.args)...)
-                )
-            )
+            push!(resultshape,Expr(:call,:*,map(x->bddict[x],i.args)...))
         end
     end
     resultindex,resultshape
@@ -252,27 +222,26 @@ end
 #= end main steps of parse =#
 
 #= main routine =#
-function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=tensorcontract)
+function tensorproductmain(ex::Expr,ord::Array{QuoteNode,1})
     head,lhs,rhs = headlhsrhs(ex)
     bdims = bonddimdict(rhs)
     tosimpletensor!(rhs,bdims)
     taketrace!(rhs,tracefunc)
-    rhs = makepairwised(rhs,ord|>order)
+    rhs = makepairwised(rhs,ord)
     lhsind,lhsreshape = toindreshape(lhs.args,bdims)
     rhs = Expr(:ref,rhs,lhsind...)
-    rhs = parsetensorproduct(rhs,contractor)
-    if lhsreshape != nothing
+    rhs = parsetensorproduct(rhs)
+    if length(lhs.args) != length(lhsind)
         rhs = Expr(:call,:reshape,rhs,lhsreshape...)
     end
     rhs
 end
 
 macro tensorfunc(ord::Expr,ex::Expr)
-    esc(tensorproductmain(ex,ord))
+    esc(tensorproductmain(ex,order(ord)))
 end
 
 macro tensorfunc(ex::Expr)
-    dummy = Expr(:tuple,:nothing)
-    esc(tensorproductmain(ex,dummy))
+    esc(tensorproductmain(ex,order()))
 end
 #= end main routine =#

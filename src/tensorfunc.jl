@@ -236,6 +236,8 @@ end
 """
     @tensorfunc(optex, block)
     @tensorfunc(block)
+
+    aaa
 """
 macro tensorfunc(ord::Expr,ex::Expr)
     esc(tensorproductmain(ex,order(ex,ord)))

@@ -18,7 +18,7 @@
 A = randn(10,10); B = randn(10,10)
 foo(a,b) = @tensorfunc [:a,:c] <= a[:a,:b] * b[:b,:c] # foo(A,B) == A*B
 A = randn(10,10); B = randn(100)
-bar(A,B) = @tensorfunc a[:a,:b] * b[(:b,:c)] => [:a,:c] # bar(A,B) == A * reshape(B,10,10)
+bar(a,b) = @tensorfunc a[:a,:b] * b[(:b,:c)] => [:a,:c] # bar(A,B) == A * reshape(B,10,10)
 A = randn(10,10); B = randn(200)
 foofoo(a,b) = @tensorfunc [:a,:c,:d] <= a[:a,:b] * b[(:b,:c,:d|2)] # 推定できないボンド次元は顕に指定する必要あり
 A = randn(10,10); B = randn(10,10); C = randn(10,10); D = randn(10,10)
@@ -29,4 +29,4 @@ hoge(a,b) = @tensofunc [:a] <= a[:a,:b*4] * b[:b*4] # a[:a,:b1,:b2,:b3,:b4] * b[
 
 ## ドキュメント
 
-準備中...
+準備中...?

@@ -23,12 +23,16 @@ function tensormapmain(ex,ord;order=order,ishermitian=false,tracefunc=tensortrac
     push!(exfromr.args,tfromr)
     push!(exfroml.args,tfroml)
     typeofmap = Expr(:call,promote_type,
-        Expr(:.,:eltype,
-            Expr(:tuple,toname.(rhs.args[2:end])...
+        Expr(:...,
+            Expr(:.,:eltype,
+                Expr(:tuple,
+                    Expr(:vect,toname.(rhs.args[2:end])...)
+                )
             )
         )
     )
-    exfromr,exfroml = Expr(:call,:(<=),lhs,exfromr),Expr(:call,:(<=),lhs,exfroml)
+    exfromr,exfroml =
+        Expr(:call,:(<=),Expr(:vect,mapindsl),exfromr),Expr(:call,:(<=),Expr(:vect,mapindsl),exfroml)
     funcfromr =
         tensorproductmain(exfromr,ord,order=order,tracefunc=tracefunc,contractor=contractor)
     funcfroml =

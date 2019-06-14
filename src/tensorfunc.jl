@@ -33,7 +33,7 @@ issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     all(ex.args[2:end] .|> isrhssimpletensor)
 
 #= elementary functions to parse the Expr =#
-function toindint(ex::Expr)
+function indint(ex::Expr)
     if typeof(ex.args[2]) == QuoteNode
         ex.args[2],ex.args[3]
     else
@@ -41,7 +41,7 @@ function toindint(ex::Expr)
     end
 end
 
-function todupind(indslis::Array{Array{QuoteNode,1},1})
+function dupinds(indslis::Array{Array{QuoteNode,1},1})
     nodup = QuoteNode[]
     dup = QuoteNode[]
     for inds in indslis
@@ -58,7 +58,7 @@ function todupind(indslis::Array{Array{QuoteNode,1},1})
     end
     nodup,dup
 end
-todupind(indslis::Array{QuoteNode,1}) = todupind([indslis])
+dupinds(indslis::Array{QuoteNode,1}) = dupinds([indslis])
 
 # main steps =#
 function headlhsrhs(ex::Expr)
@@ -100,7 +100,7 @@ function bonddimdict(ex::Expr)
                 posreshaped += length(ind.args)
                 posoriginal += 1
             elseif isintindexproduct(ind)
-                indname,posshift = toindint(ind)
+                indname,posshift = indint(ind)
                 resdict[indname] =
                     :(size($(t.args[1]))[$posoriginal:$posoriginal+$posshift-1]|>prod)
                 posreshaped += 1
@@ -136,8 +136,8 @@ function _tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
             push!(tname.args,bddict[i])
             push!(exout.args,i)
         elseif isintindexproduct(i)
-            push!(tname.args,bddict[toindint(i)[1]])
-            push!(exout.args,toindint(i)[1])
+            push!(tname.args,bddict[indint(i)[1]])
+            push!(exout.args,indint(i)[1])
         elseif isrhspairedindex(i)
             for j in i.args
                 if typeof(j) == QuoteNode
@@ -158,10 +158,10 @@ function taketrace!(ex::Expr)
 end
 function _taketrace(ex::Expr)
     tname,tind = ex.args[1],ex.args[2:end]
-    if length(todupind(QuoteNode.(tind))[2]) == 0
+    if length(dupinds(QuoteNode.(tind))[2]) == 0
         ex
     else
-        newtind = todupind(QuoteNode.(tind))[1]
+        newtind = dupinds(QuoteNode.(tind))[1]
         Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
@@ -170,7 +170,7 @@ function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
     if length(ex.args) == 3
         return ex
     end
-    nodup,dup = todupind([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
+    nodup,dup = dupinds([QuoteNode.(i.args[2:end]) for i in ex.args[2:end]])
     contracttensor = Int[]
     contractind = nothing
     for i in ord
@@ -185,7 +185,7 @@ function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
     else
         push!(contracttensor,2,3)
     end
-    newind,dst = todupind([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
+    newind,dst = dupinds([QuoteNode(i.args[2:end]) for i in ex.args[contracttensor]])
     exout = Expr(:call,:*,
         map(i->ex.args[i],filter(x->!(x in contracttensor),2:length(ex.args)))...)
     push!(exout.args,Expr(:ref,Expr(:call,:*,ex.args[contracttensor]...),newind...))

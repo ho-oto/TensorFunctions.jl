@@ -23,10 +23,10 @@ using Test
     @test TensorFunctions.ispairedindex(:( (:a,:b|1) )) == true
     @test TensorFunctions.ispairedindex(:( (:a|foo(bar),:b) )) == true
 
-    @test TensorFunctions.isindexproduct(:( :a*5 )) == true
-    @test TensorFunctions.isindexproduct(:( :a*hoge() )) == false
-    @test TensorFunctions.isindexproduct(:( :a )) == false
-    @test TensorFunctions.isindexproduct(:( :a*5*5 )) == false
+    @test TensorFunctions.isintindexproduct(:( :a*5 )) == true
+    @test TensorFunctions.isintindexproduct(:( :a*hoge() )) == false
+    @test TensorFunctions.isintindexproduct(:( :a )) == false
+    @test TensorFunctions.isintindexproduct(:( :a*5*5 )) == false
 
     @test TensorFunctions.istensor(:( foo[:a,:b,:c] )) == true
     @test TensorFunctions.istensor(:( foo(bar)[:a,:b,:c] )) == true

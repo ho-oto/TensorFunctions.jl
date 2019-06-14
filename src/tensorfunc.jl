@@ -1,79 +1,44 @@
 #= Bool functions =#
-isqnode(ex) = typeof(ex) == QuoteNode
+isqnode(ex) = false
+isqnode(ex::QuoteNode) = true
+isqnodewithdim(ex) = false
+isqnodewithdim(ex::Expr) = ex.head == :call && length(ex.args) == 3 &&
+    ex.args[1] == :| && isqnode(ex.args[2])
+isintindexproduct(ex) = false
+isintindexproduct(ex::Expr) = ex.head == :call && length(ex.args) == 3 &&
+    ex.args[1] == :* && ex.args[2:3] .|> typeof |> Set == (Int,QuoteNode) |> Set
 
-isinpairedindex(ex,inrhs::Bool=true) = false
-isinpairedindex(ex::QuoteNode,inrhs::Bool=true) = true
-isinpairedindex(ex::Expr,inrhs::Bool=true) = inrhs && ex.head == :call &&
-    ex.args[1] == :| && isqnode(ex.args[2]) && length(ex.args) == 3
+isrhspairedindex(ex) = false
+isrhspairedindex(ex::Expr) = ex.head == :tuple &&
+    all(ex.args .|> x -> isqnodewithdim(x) || isqnode(x))
+isrhsindex(ex) = isqnode(ex) || isrhspairedindex(ex) || isintindexproduct(ex)
+isrhstensor(ex) = false
+isrhstensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> isrhsindex)
+isrhssimpletensor(ex) = false
+isrhssimpletensor(ex::Expr) = ex.head == :ref && all(ex.args[2:end] .|> isqnode)
 
-ispairedindex(ex,inrhs::Bool=true) = false
-ispairedindex(ex::Expr,inrhs::Bool=true) = (ex.head == :tuple) &&
-    all(ex.args .|> x -> isinpairedindex(x,inrhs))
-
-isindexproduct(ex) = false
-isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
-    length(ex.args) == 3 && ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
-
-isindex(ex,inrhs::Bool=true) = isqnode(ex) || ispairedindex(ex,inrhs) ||
-    (inrhs && isindexproduct(ex))
-
-istensor(ex,inrhs::Bool=true) = false
-istensor(ex::Expr,inrhs::Bool=true) =
-    (ex.head == :ref && all(ex.args[2:end] .|> x -> isindex(x,inrhs))) ||
-    (ex.head == :vect && all(ex.args .|> x -> isindex(x,inrhs)) && !inrhs)
-
-issimpletensor(ex,inrhs::Bool=true) = false
-issimpletensor(ex::Expr,inrhs::Bool=true) =
-    (ex.head == :ref && all(ex.args[2:end] .|> isqnode)) ||
-    (ex.head == :vect && all(ex.args .|> isqnode) && !inrhs)
+islhspairedindex(ex) = false
+islhspairedindex(ex::Expr) = ex.head == :tuple && all(ex.args .|> isqnode)
+islhsindex(ex) = isqnode(ex) || islhspairedindex(ex)
+islhstensor(ex) = false
+islhstensor(ex::Expr) = ex.head == :vect && all(ex.args .|> islhsindex)
+islhssimpletensor(ex) = false
+islhssimpletensor(ex::Expr) =  ex.head == :vect && all(ex.args .|> isqnode)
 
 istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
-    all(ex.args[2:end] .|> x -> istensor(x))
-
+    all(ex.args[2:end] .|> isrhstensor)
 issimpletensorproduct(ex) = false
 issimpletensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
-    all(ex.args[2:end] .|> x -> issimpletensor(x))
+    all(ex.args[2:end] .|> isrhssimpletensor)
 #= end Bool functions =#
 
 #= elementary functions for parser =#
 function toindint(ex::Expr)
-    if !isindexproduct(ex)
-        error("not Int*Symbos")
-    end
     if typeof(ex.args[2]) == QuoteNode
         ex.args[2],ex.args[3]
     else
         ex.args[3],ex.args[2]
-    end
-end
-
-function toname(ex::Expr)
-    if !istensor(ex)
-        error("not tensor")
-    end
-    ex.args[1]
-end
-
-function toindex(ex::Expr)
-    if !istensor(ex,true) && !istensor(ex,false)
-        error("not tensor")
-    end
-    (ex.head == :ref) ? ex.args[2:end] : ex.args
-end
-
-function toheadlhsrhs(ex::Expr)
-    if ex.head in [:(=),:(:=),:(+=),:(-=)] && istensor(ex.args[1],false) &&
-        istensorproduct(ex.args[2]) && length(ex.args) == 2
-        ex.head,ex.args[1],ex.args[2]
-    elseif ex.head == :call && ex.args[1] == :(<=) && istensor(ex.args[2],false) &&
-        istensorproduct(ex.args[3]) && length(ex.args) == 3
-        ex.args[1],ex.args[2],ex.args[3]
-    elseif ex.head == :call && ex.args[1] == :(=>) && istensor(ex.args[3],false) &&
-        istensorproduct(ex.args[2]) && length(ex.args) == 3
-        ex.args[1],ex.args[3],ex.args[2]
-    else
-        error("parse error")
     end
 end
 
@@ -96,6 +61,18 @@ end
 #= end elementary functions for parse =#
 
 # main steps of parse =#
+function toheadlhsrhs(ex::Expr)
+    if ex.head == :call && ex.args[1] == :(<=) && length(ex.args) == 3 &&
+        islhstensor(ex.args[2]) && istensorproduct(ex.args[3])
+        ex.args[1],ex.args[2],ex.args[3]
+    elseif ex.head == :call && ex.args[1] == :(=>) && length(ex.args) == 3 &&
+        islhstensor(ex.args[3]) && istensorproduct(ex.args[2])
+        ex.args[1],ex.args[3],ex.args[2]
+    else
+        error("cannot parse the Expr")
+    end
+end
+
 function bonddimdict(ex::Expr)
     if !istensorproduct(ex)
         error("not tensorproduct")
@@ -123,7 +100,7 @@ function bonddimdict(ex::Expr)
                 pairedinddict[pairedind] = :(size($(t.args[1]),$posoriginal))
                 posreshaped += length(ind.args)
                 posoriginal += 1
-            elseif isindexproduct(ind)
+            elseif isintindexproduct(ind)
                 indname,posshift = toindint(ind)
                 resdict[indname] =
                     :(size($(t.args[1]))[$posoriginal:$posoriginal+$posshift-1]|>prod)
@@ -172,7 +149,7 @@ function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
         if isqnode(i)
             push!(tnameout.args,bddict[i])
             push!(exout.args,i)
-        elseif isindexproduct(i)
+        elseif isintindexproduct(i)
             push!(tnameout.args,bddict[toindint(i)[1]])
             push!(exout.args,toindint(i)[1])
         elseif ispairedindex(i)
@@ -198,7 +175,7 @@ function taketrace(ex::Expr,tracefunc)
     if !istensor(ex)
         error("not tensor")
     end
-    tname,tind = toname(ex),toindex(ex)
+    tname,tind = ex.args[1],ex.args[2:end]
     if length(duplicateindex([tind])[2]) == 0
         ex
     else
@@ -291,16 +268,11 @@ function tensorproductmain(ex,ord;order=order,tracefunc=tensortrace,contractor=t
     tosimpletensor!(rhs,bdims)
     taketrace!(rhs,tracefunc)
     rhs = makepairwised(rhs,ord|>order)
-    lhsind,lhsreshape = toindreshape(lhs|>toindex,bdims)
+    lhsind,lhsreshape = toindreshape(lhs.args,bdims)
     rhs = Expr(:ref,rhs,lhsind...)
     rhs = parsetensorproduct(rhs,contractor)
     if lhsreshape != nothing
         rhs = Expr(:call,:reshape,rhs,lhsreshape...)
-    end
-    if !(head in [:(<=),:(=>)])
-        lhs = toname(lhs)
-        op = Dict(:(:=) => :(=),:(=) => :(.=),:(+=) => :(.+=),:(-=) => :(.-=))[head]
-        rhs = Expr(op,lhs,rhs)
     end
     rhs
 end

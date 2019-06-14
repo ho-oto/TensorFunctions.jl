@@ -166,7 +166,7 @@ function _taketrace(ex::Expr)
     end
 end
 
-function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
+function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Array{Nothing,1}})
     if length(ex.args) == 3
         return ex
     end
@@ -219,7 +219,7 @@ function toindreshape(indslis,bddict::Dict{QuoteNode,<:Any})
 end
 
 #= definition of macro =#
-function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
+function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Array{Nothing,1}})
     head,lhs,rhs = headlhsrhs(ex)
     bdims = bonddimdict(rhs)
     tosimpletensor!(rhs,bdims)

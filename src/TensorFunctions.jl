@@ -13,7 +13,7 @@ function order(ex::Expr,ord::Expr)
     end
 end
 function order(ex::Expr)
-    (nothing,)
+    [nothing,]
 end
 
 tracefunc=tensortrace

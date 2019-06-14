@@ -160,15 +160,15 @@ function taketrace!(ex::Expr)
 end
 function _taketrace(ex::Expr)
     tname,tind = ex.args[1],ex.args[2:end]
-    if length(todupind(tind)[2]) == 0
+    if length(todupind(QuoteNode.(tind))[2]) == 0
         ex
     else
-        newtind = todupind(tind)[1]
+        newtind = todupind(QuoteNode.(tind))[1]
         Expr(:ref,:($tracefunc($tname,$tind,$newtind)),newtind...)
     end
 end
 
-function makepairwised(ex::Expr,ord::Array{QuoteNode,1})
+function makepairwised(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
     if length(ex.args) == 3
         return ex
     end
@@ -222,11 +222,11 @@ end
 #= end main steps of parse =#
 
 #= main routine =#
-function tensorproductmain(ex::Expr,ord::Array{QuoteNode,1})
+function tensorproductmain(ex::Expr,ord::Union{Array{QuoteNode,1},Tuple{Nothing}})
     head,lhs,rhs = headlhsrhs(ex)
     bdims = bonddimdict(rhs)
     tosimpletensor!(rhs,bdims)
-    taketrace!(rhs,tracefunc)
+    taketrace!(rhs)
     rhs = makepairwised(rhs,ord)
     lhsind,lhsreshape = toindreshape(lhs.args,bdims)
     rhs = Expr(:ref,rhs,lhsind...)

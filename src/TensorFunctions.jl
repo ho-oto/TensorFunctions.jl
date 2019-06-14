@@ -7,7 +7,7 @@ export @tensorfunc
 #= global setting =#
 function order(ex::Expr)
     if ex.head == :tuple
-        QuoteNode.(ex.args)
+        QuoteNode[ex.args...]
     else
         error("not implemented")
     end

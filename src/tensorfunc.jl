@@ -1,10 +1,10 @@
 #= Bool functions =#
-issymbol(ex) = typeof(ex) == QuoteNode
+isqnode(ex) = typeof(ex) == QuoteNode
 
 isinpairedindex(ex,inrhs::Bool=true) = false
 isinpairedindex(ex::QuoteNode,inrhs::Bool=true) = true
 isinpairedindex(ex::Expr,inrhs::Bool=true) = inrhs && ex.head == :call &&
-    ex.args[1] == :| && issymbol(ex.args[2]) && length(ex.args) == 3
+    ex.args[1] == :| && isqnode(ex.args[2]) && length(ex.args) == 3
 
 ispairedindex(ex,inrhs::Bool=true) = false
 ispairedindex(ex::Expr,inrhs::Bool=true) = (ex.head == :tuple) &&
@@ -14,7 +14,7 @@ isindexproduct(ex) = false
 isindexproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
     length(ex.args) == 3 && ex.args[2:3].|>typeof|>Set == (Int,QuoteNode)|>Set
 
-isindex(ex,inrhs::Bool=true) = issymbol(ex) || ispairedindex(ex,inrhs) ||
+isindex(ex,inrhs::Bool=true) = isqnode(ex) || ispairedindex(ex,inrhs) ||
     (inrhs && isindexproduct(ex))
 
 istensor(ex,inrhs::Bool=true) = false
@@ -24,8 +24,8 @@ istensor(ex::Expr,inrhs::Bool=true) =
 
 issimpletensor(ex,inrhs::Bool=true) = false
 issimpletensor(ex::Expr,inrhs::Bool=true) =
-    (ex.head == :ref && all(ex.args[2:end] .|> issymbol)) ||
-    (ex.head == :vect && all(ex.args .|> issymbol) && !inrhs)
+    (ex.head == :ref && all(ex.args[2:end] .|> isqnode)) ||
+    (ex.head == :vect && all(ex.args .|> isqnode) && !inrhs)
 
 istensorproduct(ex) = false
 istensorproduct(ex::Expr) = ex.head == :call && ex.args[1] == :* &&
@@ -105,7 +105,7 @@ function bonddimdict(ex::Expr)
     for t in ex.args[2:end]
         posreshaped = posoriginal = 1
         for ind in t.args[2:end]
-            if issymbol(ind)
+            if isqnode(ind)
                 resdict[ind] = :(size($(t.args[1]),$posoriginal))
                 posreshaped += 1
                 posoriginal += 1
@@ -169,7 +169,7 @@ function tosimpletensor(ex,bddict::Dict{QuoteNode,<:Any})
     tnameout = Expr(:call,:reshape,ex.args[1])
     exout = Expr(:ref,tnameout)
     for i in ex.args[2:end]
-        if issymbol(i)
+        if isqnode(i)
             push!(tnameout.args,bddict[i])
             push!(exout.args,i)
         elseif isindexproduct(i)
@@ -261,7 +261,7 @@ function toindreshape(indslis,bdims)
     resultindex = []
     resultshape = []
     for i in indslis
-        if issymbol(i)
+        if isqnode(i)
             push!(resultindex,i)
             push!(resultshape,bdims[i])
         else

@@ -2,8 +2,8 @@ using TensorFunctions
 using Test
 
 @testset "TensorFunctions.jl" begin
-    @test TensorFunctions.issymbol(:( :b )) == true
-    @test TensorFunctions.issymbol(:( b )) == false
+    @test TensorFunctions.isqnode(:( :b )) == true
+    @test TensorFunctions.isqnode(:( b )) == false
 
     @test TensorFunctions.isinpairedindex(:( :a ),false) == true
     @test TensorFunctions.isinpairedindex(:( :b|1 ),false) == false

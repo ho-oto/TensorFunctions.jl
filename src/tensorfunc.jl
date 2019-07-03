@@ -237,7 +237,7 @@ end
     @tensorfunc(optex, block)
     @tensorfunc(block)
 
-    aaa
+    TODO: write docs
 """
 macro tensorfunc(ord::Expr,ex::Expr)
     esc(tensorproductmain(ex,order(ex,ord)))

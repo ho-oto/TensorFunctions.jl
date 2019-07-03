@@ -1,15 +1,17 @@
-using Documenter
-using TensorFunctions
+using Documenter, TensorFunctions
 
-makedocs(
-    sitename = "TensorFunctions",
-    format = Documenter.HTML(),
-    modules = [TensorFunctions]
+makedocs(;
+    modules=[TensorFunctions],
+    format=Documenter.HTML(),
+    pages=[
+        "Home" => "index.md",
+    ],
+    repo="https://github.com/ho-oto/TensorFunctions.jl/blob/{commit}{path}#L{line}",
+    sitename="TensorFunctions.jl",
+    authors="ho-oto",
+    assets=String[],
 )
 
-# Documenter can also automatically deploy documentation to gh-pages.
-# See "Hosting Documentation" and deploydocs() in the Documenter manual
-# for more information.
-#=deploydocs(
-    repo = "<repository url>"
-)=#
+deploydocs(;
+    repo="github.com/ho-oto/TensorFunctions.jl",
+)

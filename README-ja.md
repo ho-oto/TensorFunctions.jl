@@ -26,7 +26,3 @@ barbar(a,b,c,d) = @tensorfunc (:d,:c,:b) [:a,:d] <= a[:a,:b] * b[:b,:c] * c[:c,:
 A = randn(5,5,5,5,5); B = randn(5,5,5,5)
 hoge(a,b) = @tensofunc [:a] <= a[:a,:b*4] * b[:b*4] # a[:a,:b1,:b2,:b3,:b4] * b[:b1,:b2,:b3,:b4] と書くのと同じ
 ```
-
-## ドキュメント
-
-準備中...?

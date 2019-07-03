@@ -1,17 +1,17 @@
-using Documenter, TensorFunctions
+using Documenter, TensorMaps
 
 makedocs(;
-    modules=[TensorFunctions],
+    modules=[TensorMaps],
     format=Documenter.HTML(),
     pages=[
         "Home" => "index.md",
     ],
-    repo="https://github.com/ho-oto/TensorFunctions.jl/blob/{commit}{path}#L{line}",
-    sitename="TensorFunctions.jl",
+    repo="https://github.com/ho-oto/TensorMaps.jl/blob/{commit}{path}#L{line}",
+    sitename="TensorMaps.jl",
     authors="ho-oto",
     assets=String[],
 )
 
 deploydocs(;
-    repo="github.com/ho-oto/TensorFunctions.jl",
+    repo="github.com/ho-oto/TensorMaps.jl",
 )

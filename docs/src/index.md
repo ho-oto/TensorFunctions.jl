@@ -1,3 +1,8 @@
-# TensorFunctions.jl
+# TensorMaps.jl
 
-Documentation for TensorFunctions.jl
+```@index
+```
+
+```@autodocs
+Modules = [TensorMaps]
+```

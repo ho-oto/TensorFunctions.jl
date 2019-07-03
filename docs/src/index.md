@@ -1,8 +1,8 @@
-# TensorMaps.jl
+# TensorFunctions.jl
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [TensorMaps]
+Modules = [TensorFunctions]
 ```
